@@ -146,6 +146,8 @@ async function initDb() {
       contract_number TEXT NOT NULL,
       contract_start_date DATE NOT NULL,
       contract_end_date DATE NOT NULL,
+      m2m_start_date DATE NOT NULL,
+      m2m_end_date DATE NOT NULL,
       m2m TEXT NOT NULL DEFAULT 'SOTI',
       monthly_cost_price NUMERIC(12,2) NOT NULL DEFAULT 0,
       issued BOOLEAN NOT NULL DEFAULT FALSE,
@@ -160,6 +162,8 @@ async function initDb() {
   // Forward-compatible migration for already-created databases.
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS device_id TEXT`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m TEXT`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m_start_date DATE`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m_end_date DATE`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS monthly_cost_price NUMERIC(12,2)`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued BOOLEAN`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ`);
@@ -167,12 +171,16 @@ async function initDb() {
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_by TEXT`);
   await pool.query(`UPDATE device_records SET device_id = imei_number WHERE device_id IS NULL OR device_id = ''`);
   await pool.query(`UPDATE device_records SET m2m = 'SOTI' WHERE m2m IS NULL OR m2m = ''`);
+  await pool.query(`UPDATE device_records SET m2m_start_date = contract_start_date WHERE m2m_start_date IS NULL`);
+  await pool.query(`UPDATE device_records SET m2m_end_date = contract_end_date WHERE m2m_end_date IS NULL`);
   await pool.query(`UPDATE device_records SET monthly_cost_price = 0 WHERE monthly_cost_price IS NULL`);
   await pool.query(`UPDATE device_records SET issued = FALSE WHERE issued IS NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET DEFAULT 'SOTI'`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET DEFAULT 0`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET DEFAULT FALSE`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN device_id SET NOT NULL`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m_start_date SET NOT NULL`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m_end_date SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET NOT NULL`);
@@ -342,6 +350,8 @@ function validateDeviceRecordInput(payload) {
     contractNumber: normalizeUpper(payload.contractNumber),
     contractStartDate: String(payload.contractStartDate || "").trim(),
     contractEndDate: String(payload.contractEndDate || "").trim(),
+    m2mStartDate: String(payload.m2mStartDate || "").trim(),
+    m2mEndDate: String(payload.m2mEndDate || "").trim(),
     m2m: normalizeM2M(payload.m2m),
     monthlyCostPrice: normalizeMonthlyCostPrice(payload.monthlyCostPrice)
   };
@@ -355,6 +365,8 @@ function validateDeviceRecordInput(payload) {
     record.contractNumber,
     record.contractStartDate,
     record.contractEndDate,
+    record.m2mStartDate,
+    record.m2mEndDate,
     record.m2m
   ];
 
@@ -364,6 +376,9 @@ function validateDeviceRecordInput(payload) {
 
   if (record.contractStartDate > record.contractEndDate) {
     return { ok: false, message: "Contract Start Date cannot be after Contract End Date." };
+  }
+  if (record.m2mStartDate > record.m2mEndDate) {
+    return { ok: false, message: "M2M Start Date cannot be after M2M End Date." };
   }
 
   if (record.monthlyCostPrice === null) {
@@ -532,7 +547,7 @@ app.get("/api/dashboard/summary", authMiddleware, requireRight("dashboardPage"),
 app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, device_id, imei_number, device_model, mobile_number, sim_card_number,
-            contract_number, contract_start_date, contract_end_date,
+            contract_number, contract_start_date, contract_end_date, m2m_start_date, m2m_end_date,
             m2m, monthly_cost_price, issued, issued_at, issued_to, issued_by
      FROM device_records
      ORDER BY created_at DESC`
@@ -548,6 +563,8 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
     contractNumber: row.contract_number,
     contractStartDate: row.contract_start_date,
     contractEndDate: row.contract_end_date,
+    m2mStartDate: row.m2m_start_date,
+    m2mEndDate: row.m2m_end_date,
     m2m: row.m2m,
     monthlyCostPrice: row.monthly_cost_price,
     issued: Boolean(row.issued),
@@ -562,7 +579,7 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
 app.get("/api/device-records/available", authMiddleware, requireRight("issuingPage"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, device_id, imei_number, device_model, mobile_number, sim_card_number,
-            contract_number, contract_start_date, contract_end_date,
+            contract_number, contract_start_date, contract_end_date, m2m_start_date, m2m_end_date,
             m2m, monthly_cost_price
      FROM device_records
      WHERE issued = FALSE
@@ -579,6 +596,8 @@ app.get("/api/device-records/available", authMiddleware, requireRight("issuingPa
     contractNumber: row.contract_number,
     contractStartDate: row.contract_start_date,
     contractEndDate: row.contract_end_date,
+    m2mStartDate: row.m2m_start_date,
+    m2mEndDate: row.m2m_end_date,
     m2m: row.m2m,
     monthlyCostPrice: row.monthly_cost_price
   }));
@@ -598,8 +617,8 @@ app.post("/api/device-records", authMiddleware, requireRight("deviceMaster"), as
   await pool.query(
     `INSERT INTO device_records (
       id, device_id, imei_number, device_model, mobile_number, sim_card_number,
-      contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      contract_number, contract_start_date, contract_end_date, m2m_start_date, m2m_end_date, m2m, monthly_cost_price
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [
       id,
       record.deviceId,
@@ -610,6 +629,8 @@ app.post("/api/device-records", authMiddleware, requireRight("deviceMaster"), as
       record.contractNumber,
       record.contractStartDate,
       record.contractEndDate,
+      record.m2mStartDate,
+      record.m2mEndDate,
       record.m2m,
       record.monthlyCostPrice
     ]
@@ -669,8 +690,8 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
     await pool.query(
       `INSERT INTO device_records (
         id, device_id, imei_number, device_model, mobile_number, sim_card_number,
-        contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        contract_number, contract_start_date, contract_end_date, m2m_start_date, m2m_end_date, m2m, monthly_cost_price
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
         createId(),
         record.deviceId,
@@ -681,6 +702,8 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
         record.contractNumber,
         record.contractStartDate,
         record.contractEndDate,
+        record.m2mStartDate,
+        record.m2mEndDate,
         record.m2m,
         record.monthlyCostPrice
       ]
@@ -728,7 +751,7 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("issuingPage"
      FROM picked
      WHERE d.id = picked.id
      RETURNING d.id, d.device_id, d.imei_number, d.device_model, d.mobile_number, d.sim_card_number,
-               d.contract_number, d.contract_start_date, d.contract_end_date,
+               d.contract_number, d.contract_start_date, d.contract_end_date, d.m2m_start_date, d.m2m_end_date,
                d.m2m, d.monthly_cost_price, d.issued, d.issued_at, d.issued_to, d.issued_by`,
     [issueValue, req.user.username, issuedTo]
   );
@@ -756,6 +779,8 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("issuingPage"
       contractNumber: row.contract_number,
       contractStartDate: row.contract_start_date,
       contractEndDate: row.contract_end_date,
+      m2mStartDate: row.m2m_start_date,
+      m2mEndDate: row.m2m_end_date,
       m2m: row.m2m,
       monthlyCostPrice: row.monthly_cost_price,
       issued: Boolean(row.issued),

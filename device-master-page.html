@@ -305,6 +305,14 @@
             </select>
           </div>
           <div class="field">
+            <label for="m2mStartDate">M2M Start Date</label>
+            <input id="m2mStartDate" name="m2mStartDate" type="date" required>
+          </div>
+          <div class="field">
+            <label for="m2mEndDate">M2M End Date</label>
+            <input id="m2mEndDate" name="m2mEndDate" type="date" required>
+          </div>
+          <div class="field">
             <label for="monthlyCostPrice">Monthly Cost Price</label>
             <input id="monthlyCostPrice" name="monthlyCostPrice" type="number" step="0.01" min="0" required>
           </div>
@@ -321,7 +329,7 @@
             <button class="btn-secondary" type="button" id="bulkUploadBtn">Upload CSV</button>
             <button class="btn-secondary" type="button" id="downloadTemplateBtn">Download Template</button>
           </div>
-          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price</div>
+          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M Start Date, M2M End Date, M2M, Monthly Cost Price</div>
         </div>
         <div class="hint">Records are saved in the server database.</div>
       </form>
@@ -339,13 +347,15 @@
             <th>Contract Number</th>
             <th>Contract Start Date</th>
             <th>Contract End Date</th>
+            <th>M2M Start Date</th>
+            <th>M2M End Date</th>
             <th>M2M</th>
             <th>Monthly Cost Price</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody id="recordsBody">
-          <tr><td class="empty" colspan="11">No records yet.</td></tr>
+          <tr><td class="empty" colspan="13">No records yet.</td></tr>
         </tbody>
       </table>
     </section>
@@ -382,6 +392,8 @@
       { key: "contractNumber", header: "Contract Number" },
       { key: "contractStartDate", header: "Contract Start Date" },
       { key: "contractEndDate", header: "Contract End Date" },
+      { key: "m2mStartDate", header: "M2M Start Date" },
+      { key: "m2mEndDate", header: "M2M End Date" },
       { key: "m2m", header: "M2M" },
       { key: "monthlyCostPrice", header: "Monthly Cost Price" }
     ];
@@ -427,7 +439,7 @@
 
     function renderRecords() {
       if (records.length === 0) {
-        recordsBody.innerHTML = '<tr><td class="empty" colspan="11">No records yet.</td></tr>';
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="13">No records yet.</td></tr>';
         return;
       }
 
@@ -441,6 +453,8 @@
           <td>${escapeHtml(record.contractNumber)}</td>
           <td>${escapeHtml(record.contractStartDate)}</td>
           <td>${escapeHtml(record.contractEndDate)}</td>
+          <td>${escapeHtml(record.m2mStartDate || "")}</td>
+          <td>${escapeHtml(record.m2mEndDate || "")}</td>
           <td>${escapeHtml(record.m2m || "")}</td>
           <td>${escapeHtml(record.monthlyCostPrice || "")}</td>
           <td><button class="delete-btn" type="button" data-id="${record.id}">Delete</button></td>
@@ -459,6 +473,8 @@
         r.contractNumber,
         r.contractStartDate,
         r.contractEndDate,
+        r.m2mStartDate || "",
+        r.m2mEndDate || "",
         r.m2m || "",
         r.monthlyCostPrice || ""
       ]);
@@ -567,12 +583,18 @@
         contractNumber: normalizeText(formData.get("contractNumber")),
         contractStartDate: String(formData.get("contractStartDate") || "").trim(),
         contractEndDate: String(formData.get("contractEndDate") || "").trim(),
+        m2mStartDate: String(formData.get("m2mStartDate") || "").trim(),
+        m2mEndDate: String(formData.get("m2mEndDate") || "").trim(),
         m2m: normalizeM2M(formData.get("m2m")),
         monthlyCostPrice: normalizeMonthlyCostPrice(formData.get("monthlyCostPrice"))
       };
 
       if (record.contractStartDate > record.contractEndDate) {
         setStatus("Contract Start Date cannot be after Contract End Date.", true);
+        return;
+      }
+      if (record.m2mStartDate > record.m2mEndDate) {
+        setStatus("M2M Start Date cannot be after M2M End Date.", true);
         return;
       }
       if (!record.monthlyCostPrice) {
@@ -621,7 +643,7 @@
     downloadTemplateBtn.addEventListener("click", () => {
       const template = [
         DEVICE_COLUMNS.map((column) => column.header),
-        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01", "SOTI", "35.00"]
+        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01", "2026-01-01", "2028-01-01", "SOTI", "35.00"]
       ]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");
