@@ -509,6 +509,16 @@
       return number.toFixed(2);
     }
 
+    function formatDateOnly(value) {
+      const text = String(value || "").trim();
+      if (!text) return "";
+      const isoStart = text.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (isoStart) return isoStart[1];
+      const parsed = new Date(text);
+      if (Number.isNaN(parsed.getTime())) return text;
+      return parsed.toISOString().slice(0, 10);
+    }
+
     function parseCsvRows(text) {
       const rows = [];
       let row = [];
@@ -560,7 +570,14 @@
 
     async function refreshRecords() {
       const data = await window.InventoryAuth.apiRequest("/api/device-records");
-      records = Array.isArray(data.records) ? data.records : [];
+      const rows = Array.isArray(data.records) ? data.records : [];
+      records = rows.map((record) => ({
+        ...record,
+        contractStartDate: formatDateOnly(record.contractStartDate),
+        contractEndDate: formatDateOnly(record.contractEndDate),
+        m2mStartDate: formatDateOnly(record.m2mStartDate),
+        m2mEndDate: formatDateOnly(record.m2mEndDate)
+      }));
       renderRecords();
     }
 
