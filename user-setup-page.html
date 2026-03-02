@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Setup Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+      --danger: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 32px auto;
+      padding: 0 16px 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #111827;
+      text-decoration: none;
+      background: #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      background: #d1d5db;
+    }
+
+    .session-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #bae6fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      text-transform: uppercase;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    input:not([type="date"]) {
+      text-transform: uppercase;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 10px;
+    }
+
+    .status-btn {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      min-width: 88px;
+    }
+
+    .status-btn.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: #065f46;
+      font-size: 13px;
+    }
+
+    .bulk-upload {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .file-input {
+      width: 100%;
+      max-width: 520px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <h1>User Setup Page</h1>
+      <div class="inline-actions">
+        <a class="nav-btn" id="toggleDevicePageBtn" href="device-master-page.html">Go to Device Master Page</a>
+        <a class="nav-btn" id="openLogPageBtn" href="action-log-page.html">Go to Action Log Page</a>
+        <a class="nav-btn" id="openUserMgmtPageBtn" href="user-management-page.html">Go to User Management Page</a>
+      </div>
+    </div>
+    <div class="session-bar">
+      <span class="user-pill" id="currentUserText"></span>
+      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+    </div>
+
+    <section class="card">
+      <div id="status" class="status" aria-live="polite"></div>
+      <form id="userSetupForm">
+        <div class="grid">
+          <div class="field">
+            <label for="staffId">Staff ID</label>
+            <input id="staffId" name="staffId" required>
+          </div>
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" required>
+          </div>
+          <div class="field">
+            <label for="orgUnit">Org Unit</label>
+            <input id="orgUnit" name="orgUnit" required>
+          </div>
+          <div class="field">
+            <label for="actionStatus">Action</label>
+            <select id="actionStatus" name="actionStatus" required>
+              <option value="ACTIVE" selected>ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" type="submit">Add Record</button>
+          <button class="btn-secondary" type="reset">Clear Form</button>
+          <button class="btn-secondary" type="button" id="exportCsvBtn">Export CSV</button>
+        </div>
+        <div class="bulk-upload">
+          <label for="bulkCsvFile">Bulk Upload (CSV)</label>
+          <div class="actions">
+            <input class="file-input" id="bulkCsvFile" type="file" accept=".csv,text/csv">
+            <button class="btn-secondary" type="button" id="bulkUploadBtn">Upload CSV</button>
+            <button class="btn-secondary" type="button" id="downloadTemplateBtn">Download Template</button>
+          </div>
+          <div class="hint">Required headers: Staff ID, Name, Org Unit. Optional header: Action (ACTIVE/INACTIVE).</div>
+        </div>
+        <div class="hint">Records are saved in your browser (localStorage).</div>
+      </form>
+    </section>
+
+    <section class="card table-wrap">
+      <table aria-label="User setup records">
+        <thead>
+          <tr>
+            <th>Staff ID</th>
+            <th>Name</th>
+            <th>Org Unit</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody">
+          <tr><td class="empty" colspan="4">No records yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const authContext = window.InventoryAuth.requireAuth("userSetup");
+    if (!authContext) {
+      throw new Error("AUTH_REQUIRED");
+    }
+    const activeUser = authContext.user;
+    const STORAGE_KEY = "userSetupRecords";
+    const ACTION_LOG_STORAGE_KEY = "inventoryActionLogs";
+    const MAX_ACTION_LOGS = 2000;
+    const form = document.getElementById("userSetupForm");
+    const recordsBody = document.getElementById("recordsBody");
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
+    const bulkCsvFile = document.getElementById("bulkCsvFile");
+    const bulkUploadBtn = document.getElementById("bulkUploadBtn");
+    const downloadTemplateBtn = document.getElementById("downloadTemplateBtn");
+    const toggleDevicePageBtn = document.getElementById("toggleDevicePageBtn");
+    const openLogPageBtn = document.getElementById("openLogPageBtn");
+    const openUserMgmtPageBtn = document.getElementById("openUserMgmtPageBtn");
+    const currentUserText = document.getElementById("currentUserText");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const statusEl = document.getElementById("status");
+    const USER_COLUMNS = [
+      { key: "staffId", header: "Staff ID" },
+      { key: "name", header: "Name" },
+      { key: "orgUnit", header: "Org Unit" },
+      { key: "action", header: "Action" }
+    ];
+    const REQUIRED_USER_COLUMNS = USER_COLUMNS.filter((column) => column.key !== "action");
+    let records = [];
+    let actionLogs = [];
+
+    currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toggleDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
+      openLogPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userManagement")) {
+      openUserMgmtPageBtn.style.display = "none";
+    }
+
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        records = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(records)) records = [];
+      } catch (err) {
+        records = [];
+      }
+    }
+
+    function saveRecords() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    function loadActionLogs() {
+      try {
+        const raw = localStorage.getItem(ACTION_LOG_STORAGE_KEY);
+        actionLogs = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(actionLogs)) actionLogs = [];
+      } catch (err) {
+        actionLogs = [];
+      }
+    }
+
+    function saveActionLogs() {
+      localStorage.setItem(ACTION_LOG_STORAGE_KEY, JSON.stringify(actionLogs));
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    function addActionLog(action, details) {
+      actionLogs.unshift({
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        page: "User Setup Page",
+        action,
+        details: `USER ${activeUser.username}: ${details}`
+      });
+      if (actionLogs.length > MAX_ACTION_LOGS) {
+        actionLogs = actionLogs.slice(0, MAX_ACTION_LOGS);
+      }
+      saveActionLogs();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function normalizeAction(value) {
+      return normalizeText(value) === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+    }
+
+    function renderRecords() {
+      if (records.length === 0) {
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="4">No records yet.</td></tr>';
+        return;
+      }
+
+      recordsBody.innerHTML = records.map((record) => `
+        <tr>
+          <td>${escapeHtml(record.staffId)}</td>
+          <td>${escapeHtml(record.name)}</td>
+          <td>${escapeHtml(record.orgUnit)}</td>
+          <td>
+            <button
+              class="status-btn ${normalizeAction(record.action) === "INACTIVE" ? "inactive" : ""}"
+              type="button"
+              data-action="toggle-status"
+              data-id="${record.id}"
+            >${escapeHtml(normalizeAction(record.action))}</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function toCsv(recordsData) {
+      const header = USER_COLUMNS.map((column) => column.header);
+      const rows = recordsData.map((r) => [r.staffId, r.name, r.orgUnit, normalizeAction(r.action)]);
+      return [header, ...rows]
+        .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+    }
+
+    function downloadCsv(filename, content) {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function normalizeHeader(value) {
+      return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function parseCsvRows(text) {
+      const rows = [];
+      let row = [];
+      let value = "";
+      let index = 0;
+      let inQuotes = false;
+
+      while (index < text.length) {
+        const char = text[index];
+
+        if (char === '"') {
+          if (inQuotes && text[index + 1] === '"') {
+            value += '"';
+            index += 2;
+            continue;
+          }
+          inQuotes = !inQuotes;
+          index += 1;
+          continue;
+        }
+
+        if (char === "," && !inQuotes) {
+          row.push(value);
+          value = "";
+          index += 1;
+          continue;
+        }
+
+        if ((char === "\n" || char === "\r") && !inQuotes) {
+          if (char === "\r" && text[index + 1] === "\n") {
+            index += 1;
+          }
+          row.push(value);
+          rows.push(row);
+          row = [];
+          value = "";
+          index += 1;
+          continue;
+        }
+
+        value += char;
+        index += 1;
+      }
+
+      row.push(value);
+      if (row.length > 1 || row[0] !== "") {
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function generateId() {
+      return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function normalizeText(value) {
+      return String(value).trim().toUpperCase();
+    }
+
+    form.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      target.value = target.value.toUpperCase();
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const record = {
+        id: generateId(),
+        staffId: normalizeText(formData.get("staffId")),
+        name: normalizeText(formData.get("name")),
+        orgUnit: normalizeText(formData.get("orgUnit")),
+        action: normalizeAction(formData.get("actionStatus"))
+      };
+
+      records.push(record);
+      saveRecords();
+      renderRecords();
+      form.reset();
+      setStatus("Record added.");
+      addActionLog("ADD RECORD", `Staff ID ${record.staffId}`);
+    });
+
+    recordsBody.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const action = target.getAttribute("data-action");
+      const id = target.getAttribute("data-id");
+      if (!id) return;
+      if (action !== "toggle-status") return;
+      const recordToToggle = records.find((record) => record.id === id);
+      if (!recordToToggle) return;
+      recordToToggle.action = normalizeAction(recordToToggle.action) === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      saveRecords();
+      renderRecords();
+      setStatus(`Record set to ${recordToToggle.action}.`);
+      addActionLog("UPDATE ACTION", `Staff ID ${recordToToggle.staffId} set to ${recordToToggle.action}.`);
+    });
+
+    exportCsvBtn.addEventListener("click", () => {
+      if (records.length === 0) {
+        setStatus("No records available to export.", true);
+        addActionLog("EXPORT CSV FAILED", "No records available to export.");
+        return;
+      }
+
+      const csvContent = toCsv(records);
+      downloadCsv("user-setup-records.csv", csvContent);
+      setStatus("CSV exported.");
+      addActionLog("EXPORT CSV", `Exported ${records.length} user record(s).`);
+    });
+
+    downloadTemplateBtn.addEventListener("click", () => {
+      const template = [
+        USER_COLUMNS.map((column) => column.header),
+        ["S001", "JOHN TAN", "OPERATIONS", "ACTIVE"]
+      ]
+        .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+      downloadCsv("user-setup-template.csv", template);
+      setStatus("Template downloaded.");
+      addActionLog("DOWNLOAD TEMPLATE", "Downloaded User Setup CSV template.");
+    });
+
+    bulkUploadBtn.addEventListener("click", async () => {
+      const file = bulkCsvFile.files && bulkCsvFile.files[0];
+      if (!file) {
+        setStatus("Please choose a CSV file first.", true);
+        addActionLog("BULK UPLOAD FAILED", "No CSV file selected.");
+        return;
+      }
+
+      const text = (await file.text()).replace(/^\uFEFF/, "");
+      const rows = parseCsvRows(text);
+      if (rows.length < 2) {
+        setStatus("CSV file must include a header row and at least one data row.", true);
+        addActionLog("BULK UPLOAD FAILED", "CSV does not have enough rows.");
+        return;
+      }
+
+      const headers = rows[0].map((header) => normalizeHeader(header));
+      const headerIndex = {};
+      USER_COLUMNS.forEach((column) => {
+        headerIndex[column.key] = headers.indexOf(normalizeHeader(column.header));
+      });
+
+      const missingColumns = REQUIRED_USER_COLUMNS
+        .filter((column) => headerIndex[column.key] === -1)
+        .map((column) => column.header);
+
+      if (missingColumns.length > 0) {
+        setStatus(`Missing required headers: ${missingColumns.join(", ")}`, true);
+        addActionLog("BULK UPLOAD FAILED", `Missing headers: ${missingColumns.join(", ")}`);
+        return;
+      }
+
+      let importedCount = 0;
+      let skippedCount = 0;
+
+      for (let i = 1; i < rows.length; i += 1) {
+        const row = rows[i];
+        const record = { id: generateId() };
+
+        USER_COLUMNS.forEach((column) => {
+          const colIndex = headerIndex[column.key];
+          if (column.key === "action") {
+            record[column.key] = colIndex === -1 ? "ACTIVE" : normalizeAction(row[colIndex] || "");
+          } else {
+            record[column.key] = normalizeText(row[colIndex] || "");
+          }
+        });
+
+        const isEmptyRow = USER_COLUMNS.every((column) => record[column.key] === "");
+        if (isEmptyRow) {
+          continue;
+        }
+
+        const hasMissingValue = REQUIRED_USER_COLUMNS.some((column) => record[column.key] === "");
+        if (hasMissingValue) {
+          skippedCount += 1;
+          continue;
+        }
+
+        records.push(record);
+        importedCount += 1;
+      }
+
+      if (importedCount > 0) {
+        saveRecords();
+        renderRecords();
+      }
+
+      bulkCsvFile.value = "";
+      if (importedCount === 0) {
+        setStatus(`No valid records imported. Skipped ${skippedCount} row(s).`, true);
+        addActionLog("BULK UPLOAD FAILED", `No valid records imported. Skipped ${skippedCount} row(s).`);
+        return;
+      }
+      setStatus(`Bulk upload completed. Imported ${importedCount} record(s), skipped ${skippedCount} row(s).`);
+      addActionLog("BULK UPLOAD", `Imported ${importedCount} record(s), skipped ${skippedCount} row(s).`);
+    });
+
+    toggleDevicePageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened Device Master Page.");
+    });
+
+    openLogPageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened Action Log Page.");
+    });
+
+    openUserMgmtPageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened User Management Page.");
+    });
+
+    loadRecords();
+    loadActionLogs();
+    renderRecords();
+  </script>
+</body>
+</html>

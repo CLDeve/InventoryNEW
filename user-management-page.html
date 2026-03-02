@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Management Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+      --danger: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 16px 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #111827;
+      text-decoration: none;
+      background: #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      background: #d1d5db;
+    }
+
+    .session-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #bae6fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: #065f46;
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      text-transform: uppercase;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    .checkbox-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .checkbox-line input {
+      width: auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    .rights-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+    }
+
+    .rights-item {
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+
+    .rights-item input {
+      width: auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 10px;
+    }
+
+    .action-btn {
+      padding: 6px 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 0;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+
+    .edit-btn {
+      background: #dbeafe;
+      color: #1e3a8a;
+    }
+
+    .delete-btn {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <h1>User Management Page</h1>
+      <div class="inline-actions">
+        <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Go to Device Master Page</a>
+        <a class="nav-btn" id="toUserSetupPageBtn" href="user-setup-page.html">Go to User Setup Page</a>
+        <a class="nav-btn" id="toActionLogPageBtn" href="action-log-page.html">Go to Action Log Page</a>
+      </div>
+    </div>
+    <div class="session-bar">
+      <span class="user-pill" id="currentUserText"></span>
+      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+    </div>
+
+    <section class="card">
+      <div id="status" class="status" aria-live="polite"></div>
+      <form id="userForm">
+        <input type="hidden" id="userId" name="userId">
+        <div class="grid">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" required>
+          </div>
+          <div class="field">
+            <label for="fullName">Full Name</label>
+            <input id="fullName" name="fullName" required>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" required>
+          </div>
+        </div>
+
+        <label class="checkbox-line">
+          <input id="canLogin" name="canLogin" type="checkbox" checked>
+          Allow Login
+        </label>
+
+        <div class="rights-grid">
+          <label class="rights-item">
+            <input id="rightDeviceMaster" type="checkbox" checked>
+            Device Master Access
+          </label>
+          <label class="rights-item">
+            <input id="rightUserSetup" type="checkbox" checked>
+            User Setup Access
+          </label>
+          <label class="rights-item">
+            <input id="rightActionLog" type="checkbox" checked>
+            Action Log Access
+          </label>
+          <label class="rights-item">
+            <input id="rightUserManagement" type="checkbox" checked>
+            User Management Access
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" type="submit" id="saveUserBtn">Create User</button>
+          <button class="btn-secondary" type="button" id="resetFormBtn">Clear Form</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card table-wrap">
+      <table aria-label="Managed users">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Can Login</th>
+            <th>Rights</th>
+            <th>Updated At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody">
+          <tr><td class="empty" colspan="6">No users found.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const authContext = window.InventoryAuth.requireAuth("userManagement");
+    if (!authContext) {
+      throw new Error("AUTH_REQUIRED");
+    }
+
+    const activeUser = authContext.user;
+    const currentUserText = document.getElementById("currentUserText");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const toDevicePageBtn = document.getElementById("toDevicePageBtn");
+    const toUserSetupPageBtn = document.getElementById("toUserSetupPageBtn");
+    const toActionLogPageBtn = document.getElementById("toActionLogPageBtn");
+    const statusEl = document.getElementById("status");
+    const form = document.getElementById("userForm");
+    const usersBody = document.getElementById("usersBody");
+    const userIdInput = document.getElementById("userId");
+    const usernameInput = document.getElementById("username");
+    const fullNameInput = document.getElementById("fullName");
+    const passwordInput = document.getElementById("password");
+    const canLoginInput = document.getElementById("canLogin");
+    const rightDeviceMasterInput = document.getElementById("rightDeviceMaster");
+    const rightUserSetupInput = document.getElementById("rightUserSetup");
+    const rightActionLogInput = document.getElementById("rightActionLog");
+    const rightUserManagementInput = document.getElementById("rightUserManagement");
+    const saveUserBtn = document.getElementById("saveUserBtn");
+    const resetFormBtn = document.getElementById("resetFormBtn");
+    let users = [];
+
+    currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
+      toUserSetupPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
+      toActionLogPageBtn.style.display = "none";
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    function formatDateTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString(undefined, { hour12: false });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function getRightsFromForm() {
+      return {
+        deviceMaster: rightDeviceMasterInput.checked,
+        userSetup: rightUserSetupInput.checked,
+        actionLog: rightActionLogInput.checked,
+        userManagement: rightUserManagementInput.checked
+      };
+    }
+
+    function rightsSummary(user) {
+      const map = [
+        ["deviceMaster", "DEVICE MASTER"],
+        ["userSetup", "USER SETUP"],
+        ["actionLog", "ACTION LOG"],
+        ["userManagement", "USER MANAGEMENT"]
+      ];
+      const labels = map.filter(([key]) => user.rights && user.rights[key]).map(([, label]) => label);
+      return labels.length > 0 ? labels.join(", ") : "NO RIGHTS";
+    }
+
+    function loadUsers() {
+      users = window.InventoryAuth.getUsers().sort((a, b) => a.username.localeCompare(b.username));
+    }
+
+    function renderUsers() {
+      if (users.length === 0) {
+        usersBody.innerHTML = '<tr><td class="empty" colspan="6">No users found.</td></tr>';
+        return;
+      }
+
+      usersBody.innerHTML = users.map((user) => `
+        <tr>
+          <td>${escapeHtml(user.username)}</td>
+          <td>${escapeHtml(user.fullName)}</td>
+          <td>${user.canLogin ? "YES" : "NO"}</td>
+          <td>${escapeHtml(rightsSummary(user))}</td>
+          <td>${escapeHtml(formatDateTime(user.updatedAt))}</td>
+          <td>
+            <button class="action-btn edit-btn" type="button" data-action="edit" data-id="${user.id}">Edit</button>
+            <button class="action-btn delete-btn" type="button" data-action="delete" data-id="${user.id}">Delete</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function clearForm() {
+      form.reset();
+      userIdInput.value = "";
+      rightDeviceMasterInput.checked = true;
+      rightUserSetupInput.checked = true;
+      rightActionLogInput.checked = true;
+      rightUserManagementInput.checked = true;
+      canLoginInput.checked = true;
+      saveUserBtn.textContent = "Create User";
+    }
+
+    function fillForm(user) {
+      userIdInput.value = user.id;
+      usernameInput.value = user.username;
+      fullNameInput.value = user.fullName;
+      passwordInput.value = user.password;
+      canLoginInput.checked = Boolean(user.canLogin);
+      rightDeviceMasterInput.checked = Boolean(user.rights && user.rights.deviceMaster);
+      rightUserSetupInput.checked = Boolean(user.rights && user.rights.userSetup);
+      rightActionLogInput.checked = Boolean(user.rights && user.rights.actionLog);
+      rightUserManagementInput.checked = Boolean(user.rights && user.rights.userManagement);
+      saveUserBtn.textContent = "Update User";
+    }
+
+    form.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (target.type === "checkbox") return;
+      target.value = target.value.toUpperCase();
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const payload = {
+        id: userIdInput.value || "",
+        username: usernameInput.value,
+        fullName: fullNameInput.value,
+        password: passwordInput.value,
+        canLogin: canLoginInput.checked,
+        rights: getRightsFromForm()
+      };
+
+      if (payload.id === activeUser.id && (!payload.canLogin || !payload.rights.userManagement)) {
+        setStatus("YOU CANNOT REMOVE YOUR OWN USER MANAGEMENT ACCESS.", true);
+        return;
+      }
+
+      const result = window.InventoryAuth.saveManagedUser(payload);
+      if (!result.ok) {
+        setStatus(result.message, true);
+        return;
+      }
+
+      loadUsers();
+      renderUsers();
+      clearForm();
+      setStatus(result.created ? "USER CREATED." : "USER UPDATED.");
+    });
+
+    resetFormBtn.addEventListener("click", () => {
+      clearForm();
+      setStatus("FORM CLEARED.");
+    });
+
+    usersBody.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const action = target.getAttribute("data-action");
+      const id = target.getAttribute("data-id");
+      if (!action || !id) return;
+
+      const user = users.find((entry) => entry.id === id);
+      if (!user) return;
+
+      if (action === "edit") {
+        fillForm(user);
+        setStatus(`EDITING USER ${user.username}.`);
+        return;
+      }
+
+      if (action === "delete") {
+        if (!window.confirm(`Delete user ${user.username}?`)) return;
+        const result = window.InventoryAuth.deleteManagedUser(id);
+        if (!result.ok) {
+          setStatus(result.message, true);
+          return;
+        }
+        loadUsers();
+        renderUsers();
+        clearForm();
+        setStatus("USER DELETED.");
+      }
+    });
+
+    toDevicePageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened Device Master Page.`);
+    });
+
+    toUserSetupPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened User Setup Page.`);
+    });
+
+    toActionLogPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened Action Log Page.`);
+    });
+
+    loadUsers();
+    renderUsers();
+    window.InventoryAuth.addActionLog("User Management Page", "OPEN PAGE", `User ${activeUser.username} opened User Management Page.`);
+  </script>
+</body>
+</html>

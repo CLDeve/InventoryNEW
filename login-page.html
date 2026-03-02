@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+      --danger: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+    }
+
+    .sub {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      text-transform: uppercase;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #065f46;
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Login Page</h1>
+    <p class="sub">Sign in to access inventory pages.</p>
+    <div id="status" class="status" aria-live="polite"></div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required>
+      </div>
+      <button type="submit">Login</button>
+    </form>
+    <div class="hint">Default first-time account: `ADMIN` / `ADMIN123`</div>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    window.InventoryAuth.ensureBootstrapAdmin();
+
+    const existingUser = window.InventoryAuth.getCurrentUser();
+    if (existingUser) {
+      window.location.href = window.InventoryAuth.firstAllowedPage(existingUser);
+    }
+
+    const form = document.getElementById("loginForm");
+    const statusEl = document.getElementById("status");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    form.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      target.value = target.value.toUpperCase();
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const result = window.InventoryAuth.login(usernameInput.value, passwordInput.value);
+      if (!result.ok) {
+        setStatus(result.message, true);
+        return;
+      }
+      setStatus("LOGIN SUCCESSFUL.");
+      window.location.href = result.redirect;
+    });
+  </script>
+</body>
+</html>

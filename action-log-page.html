@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Action Log Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+      --danger: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 16px 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #111827;
+      text-decoration: none;
+      background: #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      background: #d1d5db;
+    }
+
+    .session-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #bae6fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .actions {
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 10px;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: #065f46;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <h1>Action Log Page</h1>
+      <div class="inline-actions">
+        <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Go to Device Master Page</a>
+        <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">Go to User Setup Page</a>
+        <a class="nav-btn" id="toUserMgmtPageBtn" href="user-management-page.html">Go to User Management Page</a>
+      </div>
+    </div>
+    <div class="session-bar">
+      <span class="user-pill" id="currentUserText"></span>
+      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+    </div>
+
+    <section class="card table-wrap">
+      <div id="status" class="status" aria-live="polite"></div>
+      <div class="actions">
+        <button class="btn-primary" type="button" id="refreshLogsBtn">Refresh Logs</button>
+        <button type="button" id="exportLogCsvBtn">Export Log CSV</button>
+        <button type="button" id="clearLogBtn">Clear Logs</button>
+      </div>
+      <table aria-label="Action logs">
+        <thead>
+          <tr>
+            <th>Date Time</th>
+            <th>Page</th>
+            <th>Action</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody">
+          <tr><td class="empty" colspan="4">No logs yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const authContext = window.InventoryAuth.requireAuth("actionLog");
+    if (!authContext) {
+      throw new Error("AUTH_REQUIRED");
+    }
+    const activeUser = authContext.user;
+    const ACTION_LOG_STORAGE_KEY = "inventoryActionLogs";
+    const MAX_ACTION_LOGS = 2000;
+    const logsBody = document.getElementById("logsBody");
+    const statusEl = document.getElementById("status");
+    const refreshLogsBtn = document.getElementById("refreshLogsBtn");
+    const exportLogCsvBtn = document.getElementById("exportLogCsvBtn");
+    const clearLogBtn = document.getElementById("clearLogBtn");
+    const toDevicePageBtn = document.getElementById("toDevicePageBtn");
+    const toUserPageBtn = document.getElementById("toUserPageBtn");
+    const toUserMgmtPageBtn = document.getElementById("toUserMgmtPageBtn");
+    const currentUserText = document.getElementById("currentUserText");
+    const logoutBtn = document.getElementById("logoutBtn");
+    let actionLogs = [];
+
+    currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
+      toUserPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userManagement")) {
+      toUserMgmtPageBtn.style.display = "none";
+    }
+
+    function generateId() {
+      return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    function loadActionLogs() {
+      try {
+        const raw = localStorage.getItem(ACTION_LOG_STORAGE_KEY);
+        actionLogs = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(actionLogs)) actionLogs = [];
+      } catch (err) {
+        actionLogs = [];
+      }
+    }
+
+    function saveActionLogs() {
+      localStorage.setItem(ACTION_LOG_STORAGE_KEY, JSON.stringify(actionLogs));
+    }
+
+    function formatLogDateTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(undefined, { hour12: false });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function renderActionLogs() {
+      if (actionLogs.length === 0) {
+        logsBody.innerHTML = '<tr><td class="empty" colspan="4">No logs yet.</td></tr>';
+        return;
+      }
+
+      logsBody.innerHTML = actionLogs.map((log) => `
+        <tr>
+          <td>${escapeHtml(formatLogDateTime(log.timestamp))}</td>
+          <td>${escapeHtml(log.page)}</td>
+          <td>${escapeHtml(log.action)}</td>
+          <td>${escapeHtml(log.details)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function addActionLog(action, details) {
+      actionLogs.unshift({
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        page: "Action Log Page",
+        action,
+        details: `USER ${activeUser.username}: ${details}`
+      });
+      if (actionLogs.length > MAX_ACTION_LOGS) {
+        actionLogs = actionLogs.slice(0, MAX_ACTION_LOGS);
+      }
+      saveActionLogs();
+      renderActionLogs();
+    }
+
+    function downloadCsv(filename, content) {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function toActionLogCsv(logsData) {
+      const header = ["Date Time", "Page", "Action", "Details"];
+      const rows = logsData.map((log) => [
+        formatLogDateTime(log.timestamp),
+        log.page,
+        log.action,
+        log.details
+      ]);
+      return [header, ...rows]
+        .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+    }
+
+    refreshLogsBtn.addEventListener("click", () => {
+      loadActionLogs();
+      renderActionLogs();
+      setStatus("Logs refreshed.");
+      addActionLog("REFRESH LOGS", "Refreshed action log list.");
+    });
+
+    exportLogCsvBtn.addEventListener("click", () => {
+      if (actionLogs.length === 0) {
+        setStatus("No action logs available to export.", true);
+        return;
+      }
+      downloadCsv("inventory-action-logs.csv", toActionLogCsv(actionLogs));
+      setStatus("Action logs exported.");
+      addActionLog("EXPORT ACTION LOG", `Exported ${actionLogs.length} action log(s).`);
+    });
+
+    clearLogBtn.addEventListener("click", () => {
+      if (actionLogs.length === 0) {
+        setStatus("No action logs to clear.", true);
+        return;
+      }
+      if (!window.confirm("Clear all action logs?")) {
+        return;
+      }
+      actionLogs = [];
+      saveActionLogs();
+      renderActionLogs();
+      addActionLog("CLEAR LOGS", "Cleared all action logs.");
+      setStatus("Action logs cleared.");
+    });
+
+    toDevicePageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened Device Master Page.");
+    });
+
+    toUserPageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened User Setup Page.");
+    });
+
+    toUserMgmtPageBtn.addEventListener("click", () => {
+      addActionLog("NAVIGATE", "Opened User Management Page.");
+    });
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === ACTION_LOG_STORAGE_KEY) {
+        loadActionLogs();
+        renderActionLogs();
+      }
+    });
+
+    loadActionLogs();
+    renderActionLogs();
+    addActionLog("OPEN PAGE", "Opened Action Log Page.");
+  </script>
+</body>
+</html>
