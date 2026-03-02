@@ -37,6 +37,16 @@ function normalizeAction(value) {
   return normalizeUpper(value) === "INACTIVE" ? "INACTIVE" : "ACTIVE";
 }
 
+function normalizeM2M(value) {
+  return normalizeUpper(value) === "KNOX" ? "KNOX" : "SOTI";
+}
+
+function normalizeMonthlyCostPrice(value) {
+  const parsed = Number(String(value || "").trim());
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Number(parsed.toFixed(2));
+}
+
 function toRightsRow(rights) {
   return {
     device_master: Boolean(rights && rights.deviceMaster),
@@ -111,10 +121,22 @@ async function initDb() {
       contract_number TEXT NOT NULL,
       contract_start_date DATE NOT NULL,
       contract_end_date DATE NOT NULL,
+      m2m TEXT NOT NULL DEFAULT 'SOTI',
+      monthly_cost_price NUMERIC(12,2) NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // Forward-compatible migration for already-created databases.
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m TEXT`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS monthly_cost_price NUMERIC(12,2)`);
+  await pool.query(`UPDATE device_records SET m2m = 'SOTI' WHERE m2m IS NULL OR m2m = ''`);
+  await pool.query(`UPDATE device_records SET monthly_cost_price = 0 WHERE monthly_cost_price IS NULL`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET DEFAULT 'SOTI'`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET DEFAULT 0`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET NOT NULL`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET NOT NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_setup_records (
@@ -265,7 +287,9 @@ function validateDeviceRecordInput(payload) {
     simCardNumber: normalizeUpper(payload.simCardNumber),
     contractNumber: normalizeUpper(payload.contractNumber),
     contractStartDate: String(payload.contractStartDate || "").trim(),
-    contractEndDate: String(payload.contractEndDate || "").trim()
+    contractEndDate: String(payload.contractEndDate || "").trim(),
+    m2m: normalizeM2M(payload.m2m),
+    monthlyCostPrice: normalizeMonthlyCostPrice(payload.monthlyCostPrice)
   };
 
   const required = [
@@ -275,7 +299,8 @@ function validateDeviceRecordInput(payload) {
     record.simCardNumber,
     record.contractNumber,
     record.contractStartDate,
-    record.contractEndDate
+    record.contractEndDate,
+    record.m2m
   ];
 
   if (required.some((value) => !value)) {
@@ -284,6 +309,10 @@ function validateDeviceRecordInput(payload) {
 
   if (record.contractStartDate > record.contractEndDate) {
     return { ok: false, message: "Contract Start Date cannot be after Contract End Date." };
+  }
+
+  if (record.monthlyCostPrice === null) {
+    return { ok: false, message: "Monthly Cost Price must be a valid non-negative number." };
   }
 
   return { ok: true, record };
@@ -403,7 +432,7 @@ app.delete("/api/action-logs", authMiddleware, requireRight("actionLog"), async 
 app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, imei_number, device_model, mobile_number, sim_card_number,
-            contract_number, contract_start_date, contract_end_date
+            contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
      FROM device_records
      ORDER BY created_at DESC`
   );
@@ -416,7 +445,9 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
     simCardNumber: row.sim_card_number,
     contractNumber: row.contract_number,
     contractStartDate: row.contract_start_date,
-    contractEndDate: row.contract_end_date
+    contractEndDate: row.contract_end_date,
+    m2m: row.m2m,
+    monthlyCostPrice: row.monthly_cost_price
   }));
 
   return res.json({ records });
@@ -434,8 +465,8 @@ app.post("/api/device-records", authMiddleware, requireRight("deviceMaster"), as
   await pool.query(
     `INSERT INTO device_records (
       id, imei_number, device_model, mobile_number, sim_card_number,
-      contract_number, contract_start_date, contract_end_date
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       id,
       record.imeiNumber,
@@ -444,7 +475,9 @@ app.post("/api/device-records", authMiddleware, requireRight("deviceMaster"), as
       record.simCardNumber,
       record.contractNumber,
       record.contractStartDate,
-      record.contractEndDate
+      record.contractEndDate,
+      record.m2m,
+      record.monthlyCostPrice
     ]
   );
 
@@ -502,8 +535,8 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
     await pool.query(
       `INSERT INTO device_records (
         id, imei_number, device_model, mobile_number, sim_card_number,
-        contract_number, contract_start_date, contract_end_date
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         createId(),
         record.imeiNumber,
@@ -512,7 +545,9 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
         record.simCardNumber,
         record.contractNumber,
         record.contractStartDate,
-        record.contractEndDate
+        record.contractEndDate,
+        record.m2m,
+        record.monthlyCostPrice
       ]
     );
     importedCount += 1;
