@@ -263,6 +263,7 @@
     <div class="page-head">
       <h1>Issuing Page</h1>
       <div class="inline-actions">
+        <a class="nav-btn" id="toDashboardPageBtn" href="dashboard-page.html">Dashboard Page</a>
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
         <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
         <a class="nav-btn" id="toActionLogPageBtn" href="action-log-page.html">Action Log Page</a>
@@ -335,6 +336,7 @@
     }
 
     const activeUser = authContext.user;
+    const toDashboardPageBtn = document.getElementById("toDashboardPageBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
     const toUserPageBtn = document.getElementById("toUserPageBtn");
     const toActionLogPageBtn = document.getElementById("toActionLogPageBtn");
@@ -364,6 +366,9 @@
     const recentIssued = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDashboardPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
     }
@@ -586,6 +591,10 @@
       downloadCsv("issuing-device-list.csv", toCsv(records));
       setStatus("CSV EXPORTED.");
       window.InventoryAuth.addActionLog("Issuing Page", "EXPORT CSV", `USER ${activeUser.username}: Exported ${records.length} record(s).`);
+    });
+
+    toDashboardPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Issuing Page", "NAVIGATE", `USER ${activeUser.username}: Opened Dashboard Page.`);
     });
 
     toDevicePageBtn.addEventListener("click", () => {

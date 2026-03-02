@@ -166,6 +166,7 @@
     <div class="page-head">
       <h1>Action Log Page</h1>
       <div class="inline-actions">
+        <a class="nav-btn" id="toDashboardPageBtn" href="dashboard-page.html">Dashboard Page</a>
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
         <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
@@ -212,6 +213,7 @@
     const refreshLogsBtn = document.getElementById("refreshLogsBtn");
     const exportLogCsvBtn = document.getElementById("exportLogCsvBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
+    const toDashboardPageBtn = document.getElementById("toDashboardPageBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
     const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
     const toUserPageBtn = document.getElementById("toUserPageBtn");
@@ -220,6 +222,9 @@
     let actionLogs = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDashboardPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
     }
@@ -341,6 +346,10 @@
       } catch (err) {
         setStatus(err.message || "Failed to clear logs.", true);
       }
+    });
+
+    toDashboardPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened Dashboard Page.`);
     });
 
     toDevicePageBtn.addEventListener("click", () => {

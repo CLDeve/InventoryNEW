@@ -259,6 +259,7 @@
     <div class="page-head">
       <h1>User Management Page</h1>
       <div class="inline-actions">
+        <a class="nav-btn" id="toDashboardPageBtn" href="dashboard-page.html">Dashboard Page</a>
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
         <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toUserSetupPageBtn" href="user-setup-page.html">User Setup Page</a>
@@ -352,6 +353,7 @@
 
     const activeUser = authContext.user;
     const currentUserText = document.getElementById("currentUserText");
+    const toDashboardPageBtn = document.getElementById("toDashboardPageBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
     const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
     const toUserSetupPageBtn = document.getElementById("toUserSetupPageBtn");
@@ -375,6 +377,9 @@
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
 
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDashboardPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
     }
@@ -559,6 +564,10 @@
 
     toDevicePageBtn.addEventListener("click", () => {
       window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened Device Master Page.`);
+    });
+
+    toDashboardPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened Dashboard Page.`);
     });
 
     toIssuingPageBtn.addEventListener("click", () => {

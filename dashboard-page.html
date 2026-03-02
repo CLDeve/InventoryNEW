@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 32px auto;
+      padding: 0 16px 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      text-transform: uppercase;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #111827;
+      text-decoration: none;
+      background: #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      background: #d1d5db;
+    }
+
+    .session-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #bae6fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: #065f46;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 16px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 420px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      white-space: nowrap;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 10px;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <h1>Dashboard Page</h1>
+      <div class="inline-actions">
+        <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
+        <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
+        <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
+        <a class="nav-btn" id="toActionLogPageBtn" href="action-log-page.html">Action Log Page</a>
+        <a class="nav-btn" id="toUserMgmtPageBtn" href="user-management-page.html">User Management Page</a>
+      </div>
+    </div>
+    <div class="session-bar">
+      <span class="user-pill" id="currentUserText"></span>
+      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
+    </div>
+
+    <section class="card">
+      <div id="status" class="status" aria-live="polite"></div>
+      <div class="toolbar">
+        <button class="btn-primary" type="button" id="refreshBtn">Refresh Dashboard</button>
+      </div>
+      <div class="cards">
+        <div class="metric">
+          <div class="metric-label">Number of Devices</div>
+          <div class="metric-value" id="totalDevicesValue">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Total Running Cost</div>
+          <div class="metric-value" id="totalRunningCostValue">$0.00</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">SOTI Devices</div>
+          <div class="metric-value" id="sotiCountValue">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">KNOX Devices</div>
+          <div class="metric-value" id="knoxCountValue">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card table-wrap">
+        <h2>M2M Breakdown</h2>
+        <table aria-label="M2M breakdown">
+          <thead>
+            <tr>
+              <th>M2M</th>
+              <th>Devices</th>
+              <th>Running Cost</th>
+            </tr>
+          </thead>
+          <tbody id="m2mBody">
+            <tr><td class="empty" colspan="3">No data.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card table-wrap">
+        <h2>Device Model Breakdown</h2>
+        <table aria-label="Device model breakdown">
+          <thead>
+            <tr>
+              <th>Device Model</th>
+              <th>Devices</th>
+              <th>Running Cost</th>
+            </tr>
+          </thead>
+          <tbody id="modelBody">
+            <tr><td class="empty" colspan="3">No data.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const authContext = window.InventoryAuth.requireAuth("deviceMaster");
+    if (!authContext) {
+      throw new Error("AUTH_REQUIRED");
+    }
+
+    const activeUser = authContext.user;
+    const toDevicePageBtn = document.getElementById("toDevicePageBtn");
+    const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
+    const toUserPageBtn = document.getElementById("toUserPageBtn");
+    const toActionLogPageBtn = document.getElementById("toActionLogPageBtn");
+    const toUserMgmtPageBtn = document.getElementById("toUserMgmtPageBtn");
+    const currentUserText = document.getElementById("currentUserText");
+    const statusEl = document.getElementById("status");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const totalDevicesValue = document.getElementById("totalDevicesValue");
+    const totalRunningCostValue = document.getElementById("totalRunningCostValue");
+    const sotiCountValue = document.getElementById("sotiCountValue");
+    const knoxCountValue = document.getElementById("knoxCountValue");
+    const m2mBody = document.getElementById("m2mBody");
+    const modelBody = document.getElementById("modelBody");
+
+    currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
+      toIssuingPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
+      toUserPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
+      toActionLogPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userManagement")) {
+      toUserMgmtPageBtn.style.display = "none";
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = String(message || "").toUpperCase();
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function formatMoney(value) {
+      const number = Number(value);
+      return Number.isFinite(number)
+        ? number.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : "$0.00";
+    }
+
+    function renderM2mBreakdown(items) {
+      if (!Array.isArray(items) || items.length === 0) {
+        m2mBody.innerHTML = '<tr><td class="empty" colspan="3">No data.</td></tr>';
+        sotiCountValue.textContent = "0";
+        knoxCountValue.textContent = "0";
+        return;
+      }
+
+      let sotiCount = 0;
+      let knoxCount = 0;
+      m2mBody.innerHTML = items.map((item) => {
+        const m2m = String(item.m2m || "").toUpperCase();
+        const count = Number(item.count) || 0;
+        if (m2m === "SOTI") sotiCount = count;
+        if (m2m === "KNOX") knoxCount = count;
+        return `
+          <tr>
+            <td>${escapeHtml(m2m)}</td>
+            <td>${count}</td>
+            <td>${escapeHtml(formatMoney(item.runningCost))}</td>
+          </tr>
+        `;
+      }).join("");
+
+      sotiCountValue.textContent = String(sotiCount);
+      knoxCountValue.textContent = String(knoxCount);
+    }
+
+    function renderModelBreakdown(items) {
+      if (!Array.isArray(items) || items.length === 0) {
+        modelBody.innerHTML = '<tr><td class="empty" colspan="3">No data.</td></tr>';
+        return;
+      }
+
+      modelBody.innerHTML = items.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.deviceModel || "")}</td>
+          <td>${Number(item.count) || 0}</td>
+          <td>${escapeHtml(formatMoney(item.runningCost))}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadDashboard() {
+      const data = await window.InventoryAuth.apiRequest("/api/dashboard/summary");
+      totalDevicesValue.textContent = String(Number(data.totalDevices) || 0);
+      totalRunningCostValue.textContent = formatMoney(data.totalRunningCost);
+      renderM2mBreakdown(data.m2mBreakdown);
+      renderModelBreakdown(data.modelBreakdown);
+    }
+
+    refreshBtn.addEventListener("click", async () => {
+      try {
+        await loadDashboard();
+        setStatus("Dashboard refreshed.");
+        window.InventoryAuth.addActionLog("Dashboard Page", "REFRESH DASHBOARD", `USER ${activeUser.username}: Refreshed dashboard.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to load dashboard.", true);
+      }
+    });
+
+    toDevicePageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    toIssuingPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Issuing Page.`);
+    });
+
+    toUserPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Setup Page.`);
+    });
+
+    toActionLogPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Action Log Page.`);
+    });
+
+    toUserMgmtPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Management Page.`);
+    });
+
+    async function initPage() {
+      try {
+        await loadDashboard();
+        window.InventoryAuth.addActionLog("Dashboard Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Dashboard Page.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to load dashboard.", true);
+      }
+    }
+
+    initPage();
+  </script>
+</body>
+</html>

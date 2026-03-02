@@ -47,6 +47,11 @@ function normalizeMonthlyCostPrice(value) {
   return Number(parsed.toFixed(2));
 }
 
+function toFiniteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function toRightsRow(rights) {
   return {
     device_master: Boolean(rights && rights.deviceMaster),
@@ -465,6 +470,51 @@ app.delete("/api/action-logs", authMiddleware, requireRight("actionLog"), async 
     actorUsername: req.user.username
   });
   return res.json({ ok: true });
+});
+
+app.get("/api/dashboard/summary", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+  const totalsResult = await pool.query(
+    `SELECT COUNT(*)::int AS total_devices,
+            COALESCE(SUM(monthly_cost_price), 0) AS total_running_cost
+     FROM device_records`
+  );
+
+  const m2mResult = await pool.query(
+    `SELECT m2m,
+            COUNT(*)::int AS device_count,
+            COALESCE(SUM(monthly_cost_price), 0) AS running_cost
+     FROM device_records
+     GROUP BY m2m
+     ORDER BY m2m ASC`
+  );
+
+  const modelResult = await pool.query(
+    `SELECT device_model,
+            COUNT(*)::int AS device_count,
+            COALESCE(SUM(monthly_cost_price), 0) AS running_cost
+     FROM device_records
+     GROUP BY device_model
+     ORDER BY device_count DESC, device_model ASC`
+  );
+
+  const totalsRow = totalsResult.rows[0] || {};
+  const m2mBreakdown = m2mResult.rows.map((row) => ({
+    m2m: row.m2m,
+    count: Number(row.device_count) || 0,
+    runningCost: toFiniteNumber(row.running_cost)
+  }));
+  const modelBreakdown = modelResult.rows.map((row) => ({
+    deviceModel: row.device_model,
+    count: Number(row.device_count) || 0,
+    runningCost: toFiniteNumber(row.running_cost)
+  }));
+
+  return res.json({
+    totalDevices: Number(totalsRow.total_devices) || 0,
+    totalRunningCost: toFiniteNumber(totalsRow.total_running_cost),
+    m2mBreakdown,
+    modelBreakdown
+  });
 });
 
 app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
