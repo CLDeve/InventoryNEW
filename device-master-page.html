@@ -240,7 +240,7 @@
     </div>
     <div class="session-bar">
       <span class="user-pill" id="currentUserText"></span>
-      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
     </div>
 
     <section class="card">
@@ -290,7 +290,7 @@
           </div>
           <div class="hint">Required headers: IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date</div>
         </div>
-        <div class="hint">Records are saved in your browser (localStorage).</div>
+        <div class="hint">Records are saved in the server database.</div>
       </form>
     </section>
 
@@ -323,9 +323,6 @@
       throw new Error("AUTH_REQUIRED");
     }
     const activeUser = authContext.user;
-    const STORAGE_KEY = "deviceMasterRecords";
-    const ACTION_LOG_STORAGE_KEY = "inventoryActionLogs";
-    const MAX_ACTION_LOGS = 2000;
     const form = document.getElementById("deviceForm");
     const recordsBody = document.getElementById("recordsBody");
     const exportCsvBtn = document.getElementById("exportCsvBtn");
@@ -336,7 +333,6 @@
     const openLogPageBtn = document.getElementById("openLogPageBtn");
     const openUserMgmtPageBtn = document.getElementById("openUserMgmtPageBtn");
     const currentUserText = document.getElementById("currentUserText");
-    const logoutBtn = document.getElementById("logoutBtn");
     const statusEl = document.getElementById("status");
     const DEVICE_COLUMNS = [
       { key: "imeiNumber", header: "IMEI Number" },
@@ -348,7 +344,6 @@
       { key: "contractEndDate", header: "Contract End Date" }
     ];
     let records = [];
-    let actionLogs = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
@@ -361,51 +356,22 @@
       openUserMgmtPageBtn.style.display = "none";
     }
 
-    function loadRecords() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        records = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(records)) records = [];
-      } catch (err) {
-        records = [];
-      }
-    }
-
-    function saveRecords() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    }
-
-    function loadActionLogs() {
-      try {
-        const raw = localStorage.getItem(ACTION_LOG_STORAGE_KEY);
-        actionLogs = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(actionLogs)) actionLogs = [];
-      } catch (err) {
-        actionLogs = [];
-      }
-    }
-
-    function saveActionLogs() {
-      localStorage.setItem(ACTION_LOG_STORAGE_KEY, JSON.stringify(actionLogs));
-    }
-
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
       statusEl.style.color = isError ? "#b91c1c" : "#065f46";
     }
 
-    function addActionLog(action, details) {
-      actionLogs.unshift({
-        id: generateId(),
-        timestamp: new Date().toISOString(),
-        page: "Device Master Page",
-        action,
-        details: `USER ${activeUser.username}: ${details}`
-      });
-      if (actionLogs.length > MAX_ACTION_LOGS) {
-        actionLogs = actionLogs.slice(0, MAX_ACTION_LOGS);
-      }
-      saveActionLogs();
+    function normalizeText(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     function renderRecords() {
@@ -428,19 +394,9 @@
       `).join("");
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-    }
-
-    function toCsv(recordsData) {
+    function toCsv(rowsData) {
       const header = DEVICE_COLUMNS.map((column) => column.header);
-
-      const rows = recordsData.map((r) => [
+      const rows = rowsData.map((r) => [
         r.imeiNumber,
         r.deviceModel,
         r.mobileNumber,
@@ -449,7 +405,6 @@
         r.contractStartDate,
         r.contractEndDate
       ]);
-
       return [header, ...rows]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");
@@ -516,21 +471,14 @@
       }
 
       row.push(value);
-      if (row.length > 1 || row[0] !== "") {
-        rows.push(row);
-      }
-
+      if (row.length > 1 || row[0] !== "") rows.push(row);
       return rows;
     }
 
-    function generateId() {
-      return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    }
-
-    function normalizeText(value) {
-      return String(value).trim().toUpperCase();
+    async function refreshRecords() {
+      const data = await window.InventoryAuth.apiRequest("/api/device-records");
+      records = Array.isArray(data.records) ? data.records : [];
+      renderRecords();
     }
 
     form.addEventListener("input", (event) => {
@@ -540,78 +488,78 @@
       target.value = target.value.toUpperCase();
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(form);
       const record = {
-        id: generateId(),
         imeiNumber: normalizeText(formData.get("imeiNumber")),
         deviceModel: normalizeText(formData.get("deviceModel")),
         mobileNumber: normalizeText(formData.get("mobileNumber")),
         simCardNumber: normalizeText(formData.get("simCardNumber")),
         contractNumber: normalizeText(formData.get("contractNumber")),
-        contractStartDate: String(formData.get("contractStartDate")).trim(),
-        contractEndDate: String(formData.get("contractEndDate")).trim()
+        contractStartDate: String(formData.get("contractStartDate") || "").trim(),
+        contractEndDate: String(formData.get("contractEndDate") || "").trim()
       };
 
       if (record.contractStartDate > record.contractEndDate) {
         setStatus("Contract Start Date cannot be after Contract End Date.", true);
-        addActionLog("ADD RECORD FAILED", "Contract Start Date is after Contract End Date.");
         return;
       }
 
-      records.push(record);
-      saveRecords();
-      renderRecords();
-      form.reset();
-      setStatus("Record added.");
-      addActionLog("ADD RECORD", `IMEI ${record.imeiNumber}`);
+      try {
+        await window.InventoryAuth.apiRequest("/api/device-records", {
+          method: "POST",
+          body: record
+        });
+        form.reset();
+        await refreshRecords();
+        setStatus("Record added.");
+      } catch (err) {
+        setStatus(err.message || "Failed to add record.", true);
+      }
     });
 
-    recordsBody.addEventListener("click", (event) => {
+    recordsBody.addEventListener("click", async (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
       const id = target.getAttribute("data-id");
       if (!id) return;
-      const recordToDelete = records.find((record) => record.id === id);
 
-      records = records.filter((record) => record.id !== id);
-      saveRecords();
-      renderRecords();
-      setStatus("Record deleted.");
-      addActionLog("DELETE RECORD", recordToDelete ? `IMEI ${recordToDelete.imeiNumber}` : "Unknown record");
+      try {
+        await window.InventoryAuth.apiRequest(`/api/device-records/${id}`, { method: "DELETE" });
+        await refreshRecords();
+        setStatus("Record deleted.");
+      } catch (err) {
+        setStatus(err.message || "Failed to delete record.", true);
+      }
     });
 
     exportCsvBtn.addEventListener("click", () => {
       if (records.length === 0) {
         setStatus("No records available to export.", true);
-        addActionLog("EXPORT CSV FAILED", "No records available to export.");
         return;
       }
-
-      const csvContent = toCsv(records);
-      downloadCsv("device-master-records.csv", csvContent);
+      downloadCsv("device-master-records.csv", toCsv(records));
       setStatus("CSV exported.");
-      addActionLog("EXPORT CSV", `Exported ${records.length} device record(s).`);
+      window.InventoryAuth.addActionLog("Device Master Page", "EXPORT CSV", `USER ${activeUser.username}: Exported ${records.length} record(s).`);
     });
 
     downloadTemplateBtn.addEventListener("click", () => {
       const template = [
         DEVICE_COLUMNS.map((column) => column.header),
-        ["123456789012345", "iPhone 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01"]
+        ["123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01"]
       ]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");
       downloadCsv("device-master-template.csv", template);
       setStatus("Template downloaded.");
-      addActionLog("DOWNLOAD TEMPLATE", "Downloaded Device Master CSV template.");
+      window.InventoryAuth.addActionLog("Device Master Page", "DOWNLOAD TEMPLATE", `USER ${activeUser.username}: Downloaded template.`);
     });
 
     bulkUploadBtn.addEventListener("click", async () => {
       const file = bulkCsvFile.files && bulkCsvFile.files[0];
       if (!file) {
         setStatus("Please choose a CSV file first.", true);
-        addActionLog("BULK UPLOAD FAILED", "No CSV file selected.");
         return;
       }
 
@@ -619,7 +567,6 @@
       const rows = parseCsvRows(text);
       if (rows.length < 2) {
         setStatus("CSV file must include a header row and at least one data row.", true);
-        addActionLog("BULK UPLOAD FAILED", "CSV does not have enough rows.");
         return;
       }
 
@@ -629,79 +576,64 @@
         headerIndex[column.key] = headers.indexOf(normalizeHeader(column.header));
       });
 
-      const missingColumns = DEVICE_COLUMNS
-        .filter((column) => headerIndex[column.key] === -1)
-        .map((column) => column.header);
-
-      if (missingColumns.length > 0) {
-        setStatus(`Missing required headers: ${missingColumns.join(", ")}`, true);
-        addActionLog("BULK UPLOAD FAILED", `Missing headers: ${missingColumns.join(", ")}`);
+      const missing = DEVICE_COLUMNS.filter((column) => headerIndex[column.key] === -1).map((column) => column.header);
+      if (missing.length > 0) {
+        setStatus(`Missing required headers: ${missing.join(", ")}`, true);
         return;
       }
 
-      let importedCount = 0;
-      let skippedCount = 0;
-
+      const payloadRecords = [];
       for (let i = 1; i < rows.length; i += 1) {
         const row = rows[i];
-        const record = { id: generateId() };
-
+        const record = {};
         DEVICE_COLUMNS.forEach((column) => {
-          const colIndex = headerIndex[column.key];
-          const rawValue = String(row[colIndex] || "").trim();
-          record[column.key] = column.key.includes("Date") ? rawValue : rawValue.toUpperCase();
+          const raw = String(row[headerIndex[column.key]] || "").trim();
+          record[column.key] = column.key.includes("Date") ? raw : normalizeText(raw);
         });
 
-        const isEmptyRow = DEVICE_COLUMNS.every((column) => record[column.key] === "");
-        if (isEmptyRow) {
-          continue;
-        }
-
-        const hasMissingValue = DEVICE_COLUMNS.some((column) => record[column.key] === "");
-        if (hasMissingValue) {
-          skippedCount += 1;
-          continue;
-        }
-
-        if (record.contractStartDate > record.contractEndDate) {
-          skippedCount += 1;
-          continue;
-        }
-
-        records.push(record);
-        importedCount += 1;
+        const isEmpty = DEVICE_COLUMNS.every((column) => String(record[column.key] || "") === "");
+        if (!isEmpty) payloadRecords.push(record);
       }
 
-      if (importedCount > 0) {
-        saveRecords();
-        renderRecords();
-      }
-
-      bulkCsvFile.value = "";
-      if (importedCount === 0) {
-        setStatus(`No valid records imported. Skipped ${skippedCount} row(s).`, true);
-        addActionLog("BULK UPLOAD FAILED", `No valid records imported. Skipped ${skippedCount} row(s).`);
+      if (payloadRecords.length === 0) {
+        setStatus("No data rows found in file.", true);
         return;
       }
-      setStatus(`Bulk upload completed. Imported ${importedCount} record(s), skipped ${skippedCount} row(s).`);
-      addActionLog("BULK UPLOAD", `Imported ${importedCount} record(s), skipped ${skippedCount} row(s).`);
+
+      try {
+        const result = await window.InventoryAuth.apiRequest("/api/device-records/bulk", {
+          method: "POST",
+          body: { records: payloadRecords }
+        });
+        bulkCsvFile.value = "";
+        await refreshRecords();
+        setStatus(`Bulk upload completed. Imported ${result.importedCount} record(s), skipped ${result.skippedCount} row(s).`);
+      } catch (err) {
+        setStatus(err.message || "Bulk upload failed.", true);
+      }
     });
 
     toggleUserPageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened User Setup Page.");
+      window.InventoryAuth.addActionLog("Device Master Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Setup Page.`);
     });
 
     openLogPageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened Action Log Page.");
+      window.InventoryAuth.addActionLog("Device Master Page", "NAVIGATE", `USER ${activeUser.username}: Opened Action Log Page.`);
     });
 
     openUserMgmtPageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened User Management Page.");
+      window.InventoryAuth.addActionLog("Device Master Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Management Page.`);
     });
 
-    loadRecords();
-    loadActionLogs();
-    renderRecords();
+    async function initPage() {
+      try {
+        await refreshRecords();
+      } catch (err) {
+        setStatus(err.message || "Failed to load records.", true);
+      }
+    }
+
+    initPage();
   </script>
 </body>
 </html>

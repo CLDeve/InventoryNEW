@@ -266,7 +266,7 @@
     </div>
     <div class="session-bar">
       <span class="user-pill" id="currentUserText"></span>
-      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+      <button class="btn-secondary" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
     </div>
 
     <section class="card">
@@ -347,7 +347,6 @@
 
     const activeUser = authContext.user;
     const currentUserText = document.getElementById("currentUserText");
-    const logoutBtn = document.getElementById("logoutBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
     const toUserSetupPageBtn = document.getElementById("toUserSetupPageBtn");
     const toActionLogPageBtn = document.getElementById("toActionLogPageBtn");
@@ -418,8 +417,8 @@
       return labels.length > 0 ? labels.join(", ") : "NO RIGHTS";
     }
 
-    function loadUsers() {
-      users = window.InventoryAuth.getUsers().sort((a, b) => a.username.localeCompare(b.username));
+    async function loadUsers() {
+      users = (await window.InventoryAuth.getUsers()).sort((a, b) => a.username.localeCompare(b.username));
     }
 
     function renderUsers() {
@@ -458,7 +457,7 @@
       userIdInput.value = user.id;
       usernameInput.value = user.username;
       fullNameInput.value = user.fullName;
-      passwordInput.value = user.password;
+      passwordInput.value = "";
       canLoginInput.checked = Boolean(user.canLogin);
       rightDeviceMasterInput.checked = Boolean(user.rights && user.rights.deviceMaster);
       rightUserSetupInput.checked = Boolean(user.rights && user.rights.userSetup);
@@ -474,7 +473,7 @@
       target.value = target.value.toUpperCase();
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const payload = {
         id: userIdInput.value || "",
@@ -490,13 +489,13 @@
         return;
       }
 
-      const result = window.InventoryAuth.saveManagedUser(payload);
+      const result = await window.InventoryAuth.saveManagedUser(payload);
       if (!result.ok) {
         setStatus(result.message, true);
         return;
       }
 
-      loadUsers();
+      await loadUsers();
       renderUsers();
       clearForm();
       setStatus(result.created ? "USER CREATED." : "USER UPDATED.");
@@ -507,7 +506,7 @@
       setStatus("FORM CLEARED.");
     });
 
-    usersBody.addEventListener("click", (event) => {
+    usersBody.addEventListener("click", async (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
       const action = target.getAttribute("data-action");
@@ -525,12 +524,12 @@
 
       if (action === "delete") {
         if (!window.confirm(`Delete user ${user.username}?`)) return;
-        const result = window.InventoryAuth.deleteManagedUser(id);
+        const result = await window.InventoryAuth.deleteManagedUser(id);
         if (!result.ok) {
           setStatus(result.message, true);
           return;
         }
-        loadUsers();
+        await loadUsers();
         renderUsers();
         clearForm();
         setStatus("USER DELETED.");
@@ -549,9 +548,17 @@
       window.InventoryAuth.addActionLog("User Management Page", "NAVIGATE", `User ${activeUser.username} opened Action Log Page.`);
     });
 
-    loadUsers();
-    renderUsers();
-    window.InventoryAuth.addActionLog("User Management Page", "OPEN PAGE", `User ${activeUser.username} opened User Management Page.`);
+    async function initPage() {
+      try {
+        await loadUsers();
+        renderUsers();
+        window.InventoryAuth.addActionLog("User Management Page", "OPEN PAGE", `User ${activeUser.username} opened User Management Page.`);
+      } catch (err) {
+        setStatus(err.message || "FAILED TO LOAD USERS.", true);
+      }
+    }
+
+    initPage();
   </script>
 </body>
 </html>

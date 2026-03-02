@@ -1,107 +1,50 @@
 const InventoryAuth = (() => {
-  const USERS_KEY = "inventoryUsers";
-  const SESSION_KEY = "inventorySession";
-  const ACTION_LOG_STORAGE_KEY = "inventoryActionLogs";
-  const MAX_ACTION_LOGS = 2000;
-  const RIGHTS = ["deviceMaster", "userSetup", "actionLog", "userManagement"];
-
-  function generateId() {
-    return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
+  const TOKEN_KEY = "inventoryToken";
+  const API_BASE = "";
 
   function normalizeUpper(value) {
     return String(value || "").trim().toUpperCase();
   }
 
-  function safeParse(raw, fallback) {
+  function tokenGet() {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  }
+
+  function tokenSet(token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+
+  function tokenClear() {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+
+  function decodeTokenPayload(token) {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
     try {
-      const value = JSON.parse(raw);
-      return value == null ? fallback : value;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return payload;
     } catch (err) {
-      return fallback;
+      return null;
     }
   }
 
-  function getUsers() {
-    return safeParse(localStorage.getItem(USERS_KEY), []);
-  }
-
-  function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  function addActionLog(page, action, details) {
-    try {
-      const logs = safeParse(localStorage.getItem(ACTION_LOG_STORAGE_KEY), []);
-      logs.unshift({
-        id: generateId(),
-        timestamp: new Date().toISOString(),
-        page,
-        action,
-        details
-      });
-      localStorage.setItem(ACTION_LOG_STORAGE_KEY, JSON.stringify(logs.slice(0, MAX_ACTION_LOGS)));
-    } catch (err) {
-      // Ignore logging failures to avoid blocking core flows like login/logout.
+  function getCurrentUser() {
+    const payload = decodeTokenPayload(tokenGet());
+    if (!payload || !payload.username || !payload.rights) return null;
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.exp && Number(payload.exp) < nowSec) {
+      tokenClear();
+      return null;
     }
-  }
-
-  function ensureBootstrapAdmin() {
-    const users = getUsers();
-    const hasRecoverableUser = users.some((user) => {
-      const rights = user && user.rights ? user.rights : {};
-      return Boolean(
-        user &&
-        user.canLogin &&
-        (rights.deviceMaster || rights.userSetup || rights.actionLog || rights.userManagement)
-      );
-    });
-
-    if (users.length > 0 && hasRecoverableUser) return;
-
-    const now = new Date().toISOString();
-    const adminIndex = users.findIndex((user) => normalizeUpper(user.username) === "ADMIN");
-    const adminUser = {
-      id: adminIndex >= 0 && users[adminIndex] && users[adminIndex].id ? users[adminIndex].id : generateId(),
-      username: "ADMIN",
-      fullName: "SYSTEM ADMINISTRATOR",
-      password: "ADMIN123",
-      canLogin: true,
-      rights: {
-        deviceMaster: true,
-        userSetup: true,
-        actionLog: true,
-        userManagement: true
-      },
-      createdAt: adminIndex >= 0 && users[adminIndex] && users[adminIndex].createdAt ? users[adminIndex].createdAt : now,
-      updatedAt: now
+    return {
+      id: payload.sub,
+      username: payload.username,
+      fullName: payload.fullName || payload.username,
+      rights: payload.rights,
+      canLogin: true
     };
-
-    let nextUsers = users;
-    if (adminIndex >= 0) {
-      nextUsers = users.map((entry, index) => (index === adminIndex ? adminUser : entry));
-      saveUsers(nextUsers);
-      addActionLog("SYSTEM", "RECOVERY", "Recovered ADMIN account (ADMIN / ADMIN123).");
-      return;
-    }
-
-    nextUsers = [...users, adminUser];
-    saveUsers(nextUsers);
-    addActionLog("SYSTEM", "BOOTSTRAP", "Created default ADMIN user.");
-  }
-
-  function getSession() {
-    return safeParse(localStorage.getItem(SESSION_KEY), null);
-  }
-
-  function setSession(session) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  }
-
-  function clearSession() {
-    localStorage.removeItem(SESSION_KEY);
   }
 
   function hasRight(user, rightKey) {
@@ -117,54 +60,86 @@ const InventoryAuth = (() => {
     return "login-page.html";
   }
 
-  function getCurrentUser() {
-    ensureBootstrapAdmin();
-    const session = getSession();
-    if (!session || !session.username) return null;
-    const username = normalizeUpper(session.username);
-    const users = getUsers();
-    const user = users.find((entry) => normalizeUpper(entry.username) === username);
-    if (!user || !user.canLogin) return null;
-    return user;
+  async function apiRequest(path, options = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    };
+
+    const token = tokenGet();
+    if (token && !headers.Authorization) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: options.method || "GET",
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (err) {
+      data = null;
+    }
+
+    if (!response.ok) {
+      const message = (data && data.message) || `Request failed: ${response.status}`;
+      const error = new Error(message);
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
+
+    return data || {};
   }
 
-  function login(username, password) {
-    ensureBootstrapAdmin();
+  async function login(username, password) {
     const normalizedUsername = normalizeUpper(username);
     const normalizedPassword = normalizeUpper(password);
     if (!normalizedUsername || !normalizedPassword) {
-      addActionLog("SYSTEM", "LOGIN FAILED", "Missing username or password.");
       return { ok: false, message: "USERNAME AND PASSWORD ARE REQUIRED." };
     }
 
-    const users = getUsers();
-    const user = users.find((entry) => normalizeUpper(entry.username) === normalizedUsername);
-    if (!user) {
-      addActionLog("SYSTEM", "LOGIN FAILED", `Unknown user ${normalizedUsername}.`);
-      return { ok: false, message: "INVALID USERNAME OR PASSWORD." };
-    }
-    if (!user.canLogin) {
-      addActionLog("SYSTEM", "LOGIN FAILED", `Disabled user ${normalizedUsername}.`);
-      return { ok: false, message: "THIS USER IS DISABLED." };
-    }
-    if (normalizeUpper(user.password) !== normalizedPassword) {
-      addActionLog("SYSTEM", "LOGIN FAILED", `Incorrect password for ${normalizedUsername}.`);
-      return { ok: false, message: "INVALID USERNAME OR PASSWORD." };
-    }
+    try {
+      const data = await apiRequest("/api/auth/login", {
+        method: "POST",
+        body: {
+          username: normalizedUsername,
+          password: normalizedPassword
+        }
+      });
 
-    setSession({
-      username: user.username,
-      loginAt: new Date().toISOString()
-    });
-    addActionLog("SYSTEM", "LOGIN", `User ${user.username} logged in.`);
-    return { ok: true, user, redirect: firstAllowedPage(user) };
+      if (!data.token) {
+        return { ok: false, message: "LOGIN FAILED." };
+      }
+
+      tokenSet(data.token);
+      const user = data.user || getCurrentUser();
+      return {
+        ok: true,
+        user,
+        redirect: firstAllowedPage(user)
+      };
+    } catch (err) {
+      return { ok: false, message: err.message || "LOGIN FAILED." };
+    }
   }
 
   function logout() {
     const user = getCurrentUser();
-    clearSession();
-    if (user) {
-      addActionLog("SYSTEM", "LOGOUT", `User ${user.username} logged out.`);
+    const token = tokenGet();
+    tokenClear();
+    if (user && token) {
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }).catch(() => {
+        // Ignore logout request failures.
+      });
     }
     window.location.replace("login-page.html");
   }
@@ -177,7 +152,7 @@ const InventoryAuth = (() => {
     }
 
     if (requiredRight && !hasRight(user, requiredRight)) {
-      addActionLog("SYSTEM", "ACCESS DENIED", `User ${user.username} denied for ${requiredRight}.`);
+      addActionLog("SYSTEM", "ACCESS DENIED", `User ${user.username} denied for ${requiredRight}.`).catch(() => {});
       const fallback = firstAllowedPage(user);
       if (!window.location.pathname.endsWith(`/${fallback}`) && !window.location.pathname.endsWith(fallback)) {
         window.location.href = fallback;
@@ -188,111 +163,68 @@ const InventoryAuth = (() => {
     return { user };
   }
 
-  function sanitizeRights(rights) {
-    const clean = {};
-    RIGHTS.forEach((key) => {
-      clean[key] = Boolean(rights && rights[key]);
-    });
-    return clean;
+  async function addActionLog(page, action, details) {
+    try {
+      await apiRequest("/api/action-logs", {
+        method: "POST",
+        body: { page, action, details }
+      });
+    } catch (err) {
+      // Ignore action log failures to avoid blocking UI flow.
+    }
   }
 
-  function saveManagedUser(userPayload) {
-    ensureBootstrapAdmin();
-    const users = getUsers();
-    const now = new Date().toISOString();
-    const normalizedUsername = normalizeUpper(userPayload.username);
-    const normalizedFullName = normalizeUpper(userPayload.fullName);
-    const normalizedPassword = normalizeUpper(userPayload.password);
+  async function getUsers() {
+    const data = await apiRequest("/api/users");
+    return Array.isArray(data.users) ? data.users : [];
+  }
 
-    if (!normalizedUsername) {
-      return { ok: false, message: "USERNAME IS REQUIRED." };
-    }
-    if (!normalizedFullName) {
-      return { ok: false, message: "FULL NAME IS REQUIRED." };
-    }
-    if (!normalizedPassword) {
-      return { ok: false, message: "PASSWORD IS REQUIRED." };
-    }
-
-    const existing = users.find((entry) => entry.id === userPayload.id);
-    const duplicate = users.find((entry) =>
-      normalizeUpper(entry.username) === normalizedUsername && entry.id !== userPayload.id
-    );
-    if (duplicate) {
-      return { ok: false, message: "USERNAME ALREADY EXISTS." };
-    }
-
-    const nextUser = {
-      id: existing ? existing.id : generateId(),
-      username: normalizedUsername,
-      fullName: normalizedFullName,
-      password: normalizedPassword,
+  async function saveManagedUser(userPayload) {
+    const payload = {
+      username: normalizeUpper(userPayload.username),
+      fullName: normalizeUpper(userPayload.fullName),
+      password: normalizeUpper(userPayload.password),
       canLogin: Boolean(userPayload.canLogin),
-      rights: sanitizeRights(userPayload.rights),
-      createdAt: existing ? existing.createdAt : now,
-      updatedAt: now
+      rights: {
+        deviceMaster: Boolean(userPayload.rights && userPayload.rights.deviceMaster),
+        userSetup: Boolean(userPayload.rights && userPayload.rights.userSetup),
+        actionLog: Boolean(userPayload.rights && userPayload.rights.actionLog),
+        userManagement: Boolean(userPayload.rights && userPayload.rights.userManagement)
+      }
     };
 
-    if (!Object.values(nextUser.rights).some(Boolean)) {
-      return { ok: false, message: "AT LEAST ONE RIGHT MUST BE ENABLED." };
+    try {
+      const isUpdate = Boolean(userPayload.id);
+      const data = await apiRequest(isUpdate ? `/api/users/${userPayload.id}` : "/api/users", {
+        method: isUpdate ? "PUT" : "POST",
+        body: payload
+      });
+      return { ok: true, user: data.user, created: !isUpdate };
+    } catch (err) {
+      return { ok: false, message: err.message || "FAILED TO SAVE USER." };
     }
-
-    const nextUsers = existing
-      ? users.map((entry) => (entry.id === existing.id ? nextUser : entry))
-      : [...users, nextUser];
-
-    const activeManagers = nextUsers.filter((entry) => entry.canLogin && hasRight(entry, "userManagement"));
-    if (activeManagers.length === 0) {
-      return { ok: false, message: "AT LEAST ONE ACTIVE USER MANAGER IS REQUIRED." };
-    }
-
-    saveUsers(nextUsers);
-    const actor = getCurrentUser();
-    addActionLog(
-      "User Management Page",
-      existing ? "UPDATE USER" : "CREATE USER",
-      `${actor ? actor.username : "SYSTEM"} -> ${nextUser.username} (${nextUser.canLogin ? "ENABLED" : "DISABLED"})`
-    );
-    return { ok: true, user: nextUser, created: !existing };
   }
 
-  function deleteManagedUser(id) {
-    ensureBootstrapAdmin();
-    const users = getUsers();
-    const target = users.find((entry) => entry.id === id);
-    if (!target) return { ok: false, message: "USER NOT FOUND." };
-
-    const admins = users.filter((entry) => hasRight(entry, "userManagement") && entry.canLogin);
-    if (admins.length === 1 && admins[0].id === id) {
-      return { ok: false, message: "CANNOT DELETE THE LAST ACTIVE USER MANAGER." };
+  async function deleteManagedUser(id) {
+    try {
+      await apiRequest(`/api/users/${id}`, { method: "DELETE" });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message || "FAILED TO DELETE USER." };
     }
-
-    const currentUser = getCurrentUser();
-    if (currentUser && currentUser.id === id) {
-      return { ok: false, message: "YOU CANNOT DELETE YOUR OWN ACCOUNT." };
-    }
-
-    const nextUsers = users.filter((entry) => entry.id !== id);
-    saveUsers(nextUsers);
-    addActionLog("User Management Page", "DELETE USER", `${currentUser ? currentUser.username : "SYSTEM"} -> ${target.username}`);
-    return { ok: true };
   }
 
   return {
-    RIGHTS,
-    USERS_KEY,
-    SESSION_KEY,
-    ACTION_LOG_STORAGE_KEY,
     normalizeUpper,
-    ensureBootstrapAdmin,
-    getUsers,
     getCurrentUser,
     hasRight,
     firstAllowedPage,
+    apiRequest,
     login,
     logout,
     requireAuth,
     addActionLog,
+    getUsers,
     saveManagedUser,
     deleteManagedUser
   };

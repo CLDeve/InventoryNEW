@@ -128,11 +128,9 @@
 
   <script src="auth.js"></script>
   <script>
-    window.InventoryAuth.ensureBootstrapAdmin();
-
     const existingUser = window.InventoryAuth.getCurrentUser();
     if (existingUser) {
-      window.location.href = window.InventoryAuth.firstAllowedPage(existingUser);
+      window.location.replace(window.InventoryAuth.firstAllowedPage(existingUser));
     }
 
     const form = document.getElementById("loginForm");
@@ -151,15 +149,15 @@
       target.value = target.value.toUpperCase();
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const result = window.InventoryAuth.login(usernameInput.value, passwordInput.value);
+      const result = await window.InventoryAuth.login(usernameInput.value, passwordInput.value);
       if (!result.ok) {
         setStatus(result.message, true);
         return;
       }
       setStatus("LOGIN SUCCESSFUL.");
-      window.location.href = result.redirect;
+      window.location.replace(result.redirect);
     });
   </script>
 </body>

@@ -7,27 +7,41 @@ Inventory web app with:
 - User Management Page (rights-based access)
 - Action Log Page
 
-## Deploy To Render
+## Architecture
 
-This project is a static site (HTML/CSS/JS), so deploy it as a Render Static Site.
+- Frontend: static HTML/CSS/JS served by Express
+- Backend: Node.js + Express (`server.js`)
+- Database: PostgreSQL (Render Postgres)
+- Auth: JWT token in browser `localStorage`
 
-### Option 1: Blueprint (Recommended)
+## Local Run
+
+1. Install dependencies:
+   - `npm install`
+2. Set environment variables:
+   - `DATABASE_URL=<postgres connection string>`
+   - `JWT_SECRET=<any long random secret>`
+   - Optional: `ADMIN_INITIAL_PASSWORD=ADMIN123`
+3. Start app:
+   - `npm start`
+4. Open:
+   - `http://localhost:3000`
+
+## Deploy To Render (Blueprint)
 
 1. Push this repo to GitHub.
 2. In Render, click `New` -> `Blueprint`.
 3. Connect the GitHub repo `CLDeve/InventoryNEW`.
-4. Render will detect `render.yaml` and create the service automatically.
+4. Render will read `render.yaml` and create:
+   - Web Service (`inventorynew`)
+   - Postgres database (`inventorynew-db`)
 5. Open the generated URL.
-
-### Option 2: Manual Static Site
-
-1. In Render, click `New` -> `Static Site`.
-2. Connect repo `CLDeve/InventoryNEW`.
-3. Use these settings:
-   - Build Command: (leave empty)
-   - Publish Directory: `.`
-4. Deploy.
 
 ## Entry URL
 
 The app entry point is `index.html`, which redirects to `login-page.html`.
+
+## Default Login
+
+- Username: `ADMIN`
+- Password: `ADMIN123`

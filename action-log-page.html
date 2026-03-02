@@ -173,7 +173,7 @@
     </div>
     <div class="session-bar">
       <span class="user-pill" id="currentUserText"></span>
-      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventorySession'); window.location.href='login-page.html'; }">Logout</button>
+      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
     </div>
 
     <section class="card table-wrap">
@@ -206,8 +206,6 @@
       throw new Error("AUTH_REQUIRED");
     }
     const activeUser = authContext.user;
-    const ACTION_LOG_STORAGE_KEY = "inventoryActionLogs";
-    const MAX_ACTION_LOGS = 2000;
     const logsBody = document.getElementById("logsBody");
     const statusEl = document.getElementById("status");
     const refreshLogsBtn = document.getElementById("refreshLogsBtn");
@@ -217,7 +215,6 @@
     const toUserPageBtn = document.getElementById("toUserPageBtn");
     const toUserMgmtPageBtn = document.getElementById("toUserMgmtPageBtn");
     const currentUserText = document.getElementById("currentUserText");
-    const logoutBtn = document.getElementById("logoutBtn");
     let actionLogs = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
@@ -231,29 +228,15 @@
       toUserMgmtPageBtn.style.display = "none";
     }
 
-    function generateId() {
-      return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    }
-
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
       statusEl.style.color = isError ? "#b91c1c" : "#065f46";
     }
 
-    function loadActionLogs() {
-      try {
-        const raw = localStorage.getItem(ACTION_LOG_STORAGE_KEY);
-        actionLogs = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(actionLogs)) actionLogs = [];
-      } catch (err) {
-        actionLogs = [];
-      }
-    }
-
-    function saveActionLogs() {
-      localStorage.setItem(ACTION_LOG_STORAGE_KEY, JSON.stringify(actionLogs));
+    async function refreshLogs() {
+      const data = await window.InventoryAuth.apiRequest("/api/action-logs");
+      actionLogs = Array.isArray(data.logs) ? data.logs : [];
+      renderActionLogs();
     }
 
     function formatLogDateTime(value) {
@@ -286,21 +269,6 @@
       `).join("");
     }
 
-    function addActionLog(action, details) {
-      actionLogs.unshift({
-        id: generateId(),
-        timestamp: new Date().toISOString(),
-        page: "Action Log Page",
-        action,
-        details: `USER ${activeUser.username}: ${details}`
-      });
-      if (actionLogs.length > MAX_ACTION_LOGS) {
-        actionLogs = actionLogs.slice(0, MAX_ACTION_LOGS);
-      }
-      saveActionLogs();
-      renderActionLogs();
-    }
-
     function downloadCsv(filename, content) {
       const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -326,11 +294,14 @@
         .join("\n");
     }
 
-    refreshLogsBtn.addEventListener("click", () => {
-      loadActionLogs();
-      renderActionLogs();
-      setStatus("Logs refreshed.");
-      addActionLog("REFRESH LOGS", "Refreshed action log list.");
+    refreshLogsBtn.addEventListener("click", async () => {
+      try {
+        await refreshLogs();
+        setStatus("Logs refreshed.");
+        window.InventoryAuth.addActionLog("Action Log Page", "REFRESH LOGS", `USER ${activeUser.username}: Refreshed action logs.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to refresh logs.", true);
+      }
     });
 
     exportLogCsvBtn.addEventListener("click", () => {
@@ -340,10 +311,10 @@
       }
       downloadCsv("inventory-action-logs.csv", toActionLogCsv(actionLogs));
       setStatus("Action logs exported.");
-      addActionLog("EXPORT ACTION LOG", `Exported ${actionLogs.length} action log(s).`);
+      window.InventoryAuth.addActionLog("Action Log Page", "EXPORT ACTION LOG", `USER ${activeUser.username}: Exported ${actionLogs.length} log(s).`);
     });
 
-    clearLogBtn.addEventListener("click", () => {
+    clearLogBtn.addEventListener("click", async () => {
       if (actionLogs.length === 0) {
         setStatus("No action logs to clear.", true);
         return;
@@ -351,35 +322,37 @@
       if (!window.confirm("Clear all action logs?")) {
         return;
       }
-      actionLogs = [];
-      saveActionLogs();
-      renderActionLogs();
-      addActionLog("CLEAR LOGS", "Cleared all action logs.");
-      setStatus("Action logs cleared.");
-    });
-
-    toDevicePageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened Device Master Page.");
-    });
-
-    toUserPageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened User Setup Page.");
-    });
-
-    toUserMgmtPageBtn.addEventListener("click", () => {
-      addActionLog("NAVIGATE", "Opened User Management Page.");
-    });
-
-    window.addEventListener("storage", (event) => {
-      if (event.key === ACTION_LOG_STORAGE_KEY) {
-        loadActionLogs();
-        renderActionLogs();
+      try {
+        await window.InventoryAuth.apiRequest("/api/action-logs", { method: "DELETE" });
+        await refreshLogs();
+        setStatus("Action logs cleared.");
+      } catch (err) {
+        setStatus(err.message || "Failed to clear logs.", true);
       }
     });
 
-    loadActionLogs();
-    renderActionLogs();
-    addActionLog("OPEN PAGE", "Opened Action Log Page.");
+    toDevicePageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    toUserPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Setup Page.`);
+    });
+
+    toUserMgmtPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Management Page.`);
+    });
+
+    async function initPage() {
+      try {
+        await refreshLogs();
+        window.InventoryAuth.addActionLog("Action Log Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Action Log Page.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to load action logs.", true);
+      }
+    }
+
+    initPage();
   </script>
 </body>
 </html>
