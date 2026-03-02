@@ -197,7 +197,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1240px;
+      min-width: 620px;
       font-size: 14px;
     }
 
@@ -278,8 +278,8 @@
       <div id="status" class="status" aria-live="polite"></div>
       <form id="scanIssueForm" class="scan-grid">
         <div class="field">
-          <label for="scanImeiInput">Scan IMEI Number</label>
-          <input id="scanImeiInput" placeholder="SCAN OR TYPE IMEI" required>
+          <label for="scanDeviceIdInput">Scan Device ID</label>
+          <input id="scanDeviceIdInput" placeholder="SCAN OR TYPE DEVICE ID" required>
         </div>
         <div class="field">
           <label for="issuedToInput">Issued To (Staff ID / Name)</label>
@@ -287,7 +287,7 @@
         </div>
         <button class="btn-primary" type="submit" id="issueBtn">Issue Device</button>
       </form>
-      <div class="hint">SCANNER FLOW: SCAN IMEI AND PRESS ENTER. SYSTEM ISSUES AND REMOVES THE DEVICE FROM THIS PAGE.</div>
+      <div class="hint">SCANNER FLOW: SCAN DEVICE ID AND PRESS ENTER. SYSTEM ISSUES AND REMOVES THE DEVICE FROM THIS PAGE.</div>
     </section>
 
     <section class="card">
@@ -299,7 +299,7 @@
 
     <section class="card table-wrap">
       <div class="toolbar">
-        <input id="searchInput" placeholder="Search Device ID, IMEI, model, mobile, SIM, contract, M2M">
+        <input id="searchInput" placeholder="Search Device ID, Device Model, Mobile Number">
         <button class="btn-primary" type="button" id="refreshBtn">Refresh Devices</button>
         <button type="button" id="exportCsvBtn">Export CSV</button>
         <span class="count" id="countText">0 DEVICE(S)</span>
@@ -308,19 +308,12 @@
         <thead>
           <tr>
             <th>Device ID</th>
-            <th>IMEI Number</th>
             <th>Device Model</th>
             <th>Mobile Number</th>
-            <th>Sim Card Number</th>
-            <th>Contract Number</th>
-            <th>Contract Start Date</th>
-            <th>Contract End Date</th>
-            <th>M2M</th>
-            <th>Monthly Cost Price</th>
           </tr>
         </thead>
         <tbody id="recordsBody">
-          <tr><td class="empty" colspan="10">No records yet.</td></tr>
+          <tr><td class="empty" colspan="3">No records yet.</td></tr>
         </tbody>
       </table>
       <div class="pager">
@@ -350,7 +343,7 @@
     const statusEl = document.getElementById("status");
 
     const scanIssueForm = document.getElementById("scanIssueForm");
-    const scanImeiInput = document.getElementById("scanImeiInput");
+    const scanDeviceIdInput = document.getElementById("scanDeviceIdInput");
     const issuedToInput = document.getElementById("issuedToInput");
     const issueBtn = document.getElementById("issueBtn");
 
@@ -399,27 +392,14 @@
         .replaceAll("'", "&#39;");
     }
 
-    function formatMonthlyCostPrice(value) {
-      const number = Number(value);
-      if (!Number.isFinite(number)) return String(value || "");
-      return number.toFixed(2);
-    }
-
     function getFilteredRecords() {
       const keyword = normalizeText(searchInput.value);
       if (!keyword) return allRecords;
       return allRecords.filter((record) => {
         const haystack = [
           record.deviceId,
-          record.imeiNumber,
           record.deviceModel,
-          record.mobileNumber,
-          record.simCardNumber,
-          record.contractNumber,
-          record.contractStartDate,
-          record.contractEndDate,
-          record.m2m,
-          record.monthlyCostPrice
+          record.mobileNumber
         ]
           .map((item) => normalizeText(item))
           .join(" ");
@@ -456,22 +436,15 @@
       nextPageBtn.disabled = currentPage >= totalPages;
 
       if (pageItems.length === 0) {
-        recordsBody.innerHTML = '<tr><td class="empty" colspan="10">No records found.</td></tr>';
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="3">No records found.</td></tr>';
         return;
       }
 
       recordsBody.innerHTML = pageItems.map((record) => `
         <tr>
           <td>${escapeHtml(record.deviceId || "")}</td>
-          <td>${escapeHtml(record.imeiNumber || "")}</td>
           <td>${escapeHtml(record.deviceModel || "")}</td>
           <td>${escapeHtml(record.mobileNumber || "")}</td>
-          <td>${escapeHtml(record.simCardNumber || "")}</td>
-          <td>${escapeHtml(record.contractNumber || "")}</td>
-          <td>${escapeHtml(record.contractStartDate || "")}</td>
-          <td>${escapeHtml(record.contractEndDate || "")}</td>
-          <td>${escapeHtml(record.m2m || "")}</td>
-          <td>${escapeHtml(formatMonthlyCostPrice(record.monthlyCostPrice))}</td>
         </tr>
       `).join("");
     }
@@ -479,27 +452,13 @@
     function toCsv(rowsData) {
       const header = [
         "Device ID",
-        "IMEI Number",
         "Device Model",
-        "Mobile Number",
-        "Sim Card Number",
-        "Contract Number",
-        "Contract Start Date",
-        "Contract End Date",
-        "M2M",
-        "Monthly Cost Price"
+        "Mobile Number"
       ];
       const rows = rowsData.map((record) => [
         record.deviceId || "",
-        record.imeiNumber || "",
         record.deviceModel || "",
-        record.mobileNumber || "",
-        record.simCardNumber || "",
-        record.contractNumber || "",
-        record.contractStartDate || "",
-        record.contractEndDate || "",
-        record.m2m || "",
-        formatMonthlyCostPrice(record.monthlyCostPrice)
+        record.mobileNumber || ""
       ]);
       return [header, ...rows]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
@@ -526,18 +485,18 @@
     }
 
     function focusScanInput() {
-      scanImeiInput.focus();
-      scanImeiInput.select();
+      scanDeviceIdInput.focus();
+      scanDeviceIdInput.select();
     }
 
     async function submitIssue() {
       if (issuingInProgress) return;
 
-      const imeiNumber = normalizeText(scanImeiInput.value);
+      const deviceId = normalizeText(scanDeviceIdInput.value);
       const issuedTo = normalizeText(issuedToInput.value);
 
-      if (!imeiNumber) {
-        setStatus("IMEI NUMBER IS REQUIRED.", true);
+      if (!deviceId) {
+        setStatus("DEVICE ID IS REQUIRED.", true);
         focusScanInput();
         return;
       }
@@ -548,24 +507,24 @@
       try {
         const data = await window.InventoryAuth.apiRequest("/api/device-records/issue", {
           method: "POST",
-          body: { imeiNumber, issuedTo }
+          body: { deviceId, issuedTo }
         });
 
         const issuedRecord = data.record || null;
         if (issuedRecord && issuedRecord.id) {
           allRecords = allRecords.filter((record) => record.id !== issuedRecord.id);
         } else {
-          allRecords = allRecords.filter((record) => normalizeText(record.imeiNumber) !== imeiNumber);
+          allRecords = allRecords.filter((record) => normalizeText(record.deviceId) !== deviceId);
         }
 
-        const recentLine = `${imeiNumber}${issuedTo ? ` TO ${issuedTo}` : ""}`;
+        const recentLine = `${deviceId}${issuedTo ? ` TO ${issuedTo}` : ""}`;
         recentIssued.unshift(recentLine);
         if (recentIssued.length > 20) recentIssued.length = 20;
         renderRecentIssued();
 
         renderRecords();
-        setStatus(`ISSUED IMEI ${imeiNumber}${issuedTo ? ` TO ${issuedTo}` : ""}.`);
-        scanImeiInput.value = "";
+        setStatus(`ISSUED DEVICE ID ${deviceId}${issuedTo ? ` TO ${issuedTo}` : ""}.`);
+        scanDeviceIdInput.value = "";
         focusScanInput();
       } catch (err) {
         setStatus(err.message || "FAILED TO ISSUE DEVICE.", true);
@@ -576,8 +535,8 @@
       }
     }
 
-    scanImeiInput.addEventListener("input", () => {
-      scanImeiInput.value = scanImeiInput.value.toUpperCase();
+    scanDeviceIdInput.addEventListener("input", () => {
+      scanDeviceIdInput.value = scanDeviceIdInput.value.toUpperCase();
     });
 
     issuedToInput.addEventListener("input", () => {

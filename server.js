@@ -161,6 +161,9 @@ async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_device_records_issued_imei ON device_records (issued, imei_number);
   `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_device_records_issued_device_id ON device_records (issued, device_id);
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_setup_records (
@@ -625,18 +628,21 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
 });
 
 app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+  const deviceId = normalizeUpper(req.body && req.body.deviceId);
   const imeiNumber = normalizeUpper(req.body && req.body.imeiNumber);
   const issuedTo = normalizeUpper(req.body && req.body.issuedTo);
 
-  if (!imeiNumber) {
-    return res.status(400).json({ message: "IMEI NUMBER IS REQUIRED." });
+  if (!deviceId && !imeiNumber) {
+    return res.status(400).json({ message: "DEVICE ID IS REQUIRED." });
   }
 
+  const issueField = deviceId ? "device_id" : "imei_number";
+  const issueValue = deviceId || imeiNumber;
   const result = await pool.query(
     `WITH picked AS (
        SELECT id
        FROM device_records
-       WHERE imei_number = $1
+       WHERE ${issueField} = $1
          AND issued = FALSE
        ORDER BY created_at ASC
        LIMIT 1
@@ -653,7 +659,7 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster
      RETURNING d.id, d.device_id, d.imei_number, d.device_model, d.mobile_number, d.sim_card_number,
                d.contract_number, d.contract_start_date, d.contract_end_date,
                d.m2m, d.monthly_cost_price, d.issued, d.issued_at, d.issued_to, d.issued_by`,
-    [imeiNumber, req.user.username, issuedTo]
+    [issueValue, req.user.username, issuedTo]
   );
 
   if (result.rowCount === 0) {
@@ -664,7 +670,7 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster
   await addActionLog({
     page: "Issuing Page",
     action: "ISSUE DEVICE",
-    details: `USER ${req.user.username}: IMEI ${row.imei_number}${issuedTo ? ` TO ${issuedTo}` : ""}`,
+    details: `USER ${req.user.username}: DEVICE ID ${row.device_id}${issuedTo ? ` TO ${issuedTo}` : ""}`,
     actorUsername: req.user.username
   });
 
