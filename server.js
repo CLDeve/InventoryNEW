@@ -341,6 +341,10 @@ function requireRight(rightKey) {
 }
 
 function validateDeviceRecordInput(payload) {
+  const contractStartDate = String(payload.contractStartDate || "").trim();
+  const contractEndDate = String(payload.contractEndDate || "").trim();
+  const rawM2mStartDate = String(payload.m2mStartDate || "").trim();
+  const rawM2mEndDate = String(payload.m2mEndDate || "").trim();
   const record = {
     deviceId: normalizeUpper(payload.deviceId),
     imeiNumber: normalizeUpper(payload.imeiNumber),
@@ -348,10 +352,12 @@ function validateDeviceRecordInput(payload) {
     mobileNumber: normalizeUpper(payload.mobileNumber),
     simCardNumber: normalizeUpper(payload.simCardNumber),
     contractNumber: normalizeUpper(payload.contractNumber),
-    contractStartDate: String(payload.contractStartDate || "").trim(),
-    contractEndDate: String(payload.contractEndDate || "").trim(),
-    m2mStartDate: String(payload.m2mStartDate || "").trim(),
-    m2mEndDate: String(payload.m2mEndDate || "").trim(),
+    contractStartDate,
+    contractEndDate,
+    // Backward compatibility for older CSV files:
+    // if M2M dates are missing, use contract dates.
+    m2mStartDate: rawM2mStartDate || contractStartDate,
+    m2mEndDate: rawM2mEndDate || contractEndDate,
     m2m: normalizeM2M(payload.m2m),
     monthlyCostPrice: normalizeMonthlyCostPrice(payload.monthlyCostPrice)
   };

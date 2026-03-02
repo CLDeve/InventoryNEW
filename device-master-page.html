@@ -329,7 +329,7 @@
             <button class="btn-secondary" type="button" id="bulkUploadBtn">Upload CSV</button>
             <button class="btn-secondary" type="button" id="downloadTemplateBtn">Download Template</button>
           </div>
-          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M Start Date, M2M End Date, M2M, Monthly Cost Price</div>
+          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price. Optional: M2M Start Date, M2M End Date (if omitted, contract dates are used).</div>
         </div>
         <div class="hint">Records are saved in the server database.</div>
       </form>
@@ -672,7 +672,10 @@
         headerIndex[column.key] = headers.indexOf(normalizeHeader(column.header));
       });
 
-      const missing = DEVICE_COLUMNS.filter((column) => headerIndex[column.key] === -1).map((column) => column.header);
+      const optionalBulkColumns = new Set(["m2mStartDate", "m2mEndDate"]);
+      const missing = DEVICE_COLUMNS
+        .filter((column) => headerIndex[column.key] === -1 && !optionalBulkColumns.has(column.key))
+        .map((column) => column.header);
       if (missing.length > 0) {
         setStatus(`Missing required headers: ${missing.join(", ")}`, true);
         return;
@@ -683,7 +686,8 @@
         const row = rows[i];
         const record = {};
         DEVICE_COLUMNS.forEach((column) => {
-          const raw = String(row[headerIndex[column.key]] || "").trim();
+          const index = headerIndex[column.key];
+          const raw = index === -1 ? "" : String(row[index] || "").trim();
           if (column.key.includes("Date")) {
             record[column.key] = raw;
           } else if (column.key === "m2m") {
@@ -694,6 +698,12 @@
             record[column.key] = normalizeText(raw);
           }
         });
+        if (!record.m2mStartDate) {
+          record.m2mStartDate = record.contractStartDate;
+        }
+        if (!record.m2mEndDate) {
+          record.m2mEndDate = record.contractEndDate;
+        }
 
         const isEmpty = DEVICE_COLUMNS.every((column) => String(record[column.key] || "") === "");
         if (!isEmpty) payloadRecords.push(record);
