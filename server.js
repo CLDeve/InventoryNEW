@@ -47,6 +47,55 @@ function normalizeMonthlyCostPrice(value) {
   return Number(parsed.toFixed(2));
 }
 
+function normalizeDateValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  // Already ISO format.
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const [_, y, m, d] = isoMatch;
+    const date = new Date(`${y}-${m}-${d}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return "";
+    if (date.getUTCFullYear() !== Number(y) || date.getUTCMonth() + 1 !== Number(m) || date.getUTCDate() !== Number(d)) return "";
+    return `${y}-${m}-${d}`;
+  }
+
+  // DD/MM/YYYY or D/M/YYYY
+  const dmyNumeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyNumeric) {
+    const day = Number(dmyNumeric[1]);
+    const month = Number(dmyNumeric[2]);
+    const year = Number(dmyNumeric[3]);
+    const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const date = new Date(`${iso}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return "";
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return "";
+    return iso;
+  }
+
+  // DD/MMM/YYYY (e.g., 02/MAR/2026)
+  const dmyMonthName = raw.match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/);
+  if (dmyMonthName) {
+    const day = Number(dmyMonthName[1]);
+    const monText = dmyMonthName[2].toUpperCase();
+    const year = Number(dmyMonthName[3]);
+    const monthMap = {
+      JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
+      JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
+    };
+    const month = monthMap[monText] || 0;
+    if (!month) return "";
+    const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const date = new Date(`${iso}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return "";
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return "";
+    return iso;
+  }
+
+  return "";
+}
+
 function toFiniteNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -341,10 +390,10 @@ function requireRight(rightKey) {
 }
 
 function validateDeviceRecordInput(payload) {
-  const contractStartDate = String(payload.contractStartDate || "").trim();
-  const contractEndDate = String(payload.contractEndDate || "").trim();
-  const rawM2mStartDate = String(payload.m2mStartDate || "").trim();
-  const rawM2mEndDate = String(payload.m2mEndDate || "").trim();
+  const contractStartDate = normalizeDateValue(payload.contractStartDate);
+  const contractEndDate = normalizeDateValue(payload.contractEndDate);
+  const rawM2mStartDate = normalizeDateValue(payload.m2mStartDate);
+  const rawM2mEndDate = normalizeDateValue(payload.m2mEndDate);
   const record = {
     deviceId: normalizeUpper(payload.deviceId),
     imeiNumber: normalizeUpper(payload.imeiNumber),
@@ -377,7 +426,7 @@ function validateDeviceRecordInput(payload) {
   ];
 
   if (required.some((value) => !value)) {
-    return { ok: false, message: "All device fields are required." };
+    return { ok: false, message: "All device fields are required. Use date format YYYY-MM-DD, DD/MM/YYYY, or DD/MMM/YYYY." };
   }
 
   if (record.contractStartDate > record.contractEndDate) {
