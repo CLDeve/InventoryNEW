@@ -509,14 +509,21 @@
       return number.toFixed(2);
     }
 
-    function formatDateOnly(value) {
+    function formatDateDisplay(value) {
       const text = String(value || "").trim();
       if (!text) return "";
       const isoStart = text.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (isoStart) return isoStart[1];
+      if (isoStart) {
+        const [year, month, day] = isoStart[1].split("-");
+        const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        return `${day}/${monthNames[Number(month) - 1]}/${year}`;
+      }
       const parsed = new Date(text);
       if (Number.isNaN(parsed.getTime())) return text;
-      return parsed.toISOString().slice(0, 10);
+      const iso = parsed.toISOString().slice(0, 10);
+      const [year, month, day] = iso.split("-");
+      const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+      return `${day}/${monthNames[Number(month) - 1]}/${year}`;
     }
 
     function parseCsvRows(text) {
@@ -573,10 +580,10 @@
       const rows = Array.isArray(data.records) ? data.records : [];
       records = rows.map((record) => ({
         ...record,
-        contractStartDate: formatDateOnly(record.contractStartDate),
-        contractEndDate: formatDateOnly(record.contractEndDate),
-        m2mStartDate: formatDateOnly(record.m2mStartDate),
-        m2mEndDate: formatDateOnly(record.m2mEndDate)
+        contractStartDate: formatDateDisplay(record.contractStartDate),
+        contractEndDate: formatDateDisplay(record.contractEndDate),
+        m2mStartDate: formatDateDisplay(record.m2mStartDate),
+        m2mEndDate: formatDateDisplay(record.m2mEndDate)
       }));
       renderRecords();
     }
@@ -660,7 +667,7 @@
     downloadTemplateBtn.addEventListener("click", () => {
       const template = [
         DEVICE_COLUMNS.map((column) => column.header),
-        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01", "2026-01-01", "2028-01-01", "SOTI", "35.00"]
+        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "01/JAN/2026", "01/JAN/2028", "01/JAN/2026", "01/JAN/2028", "SOTI", "35.00"]
       ]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");
