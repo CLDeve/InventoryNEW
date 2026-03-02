@@ -222,6 +222,8 @@
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
       toIssuingPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {

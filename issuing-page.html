@@ -329,7 +329,7 @@
   <script>
     const PAGE_SIZE = 100;
 
-    const authContext = window.InventoryAuth.requireAuth("deviceMaster");
+    const authContext = window.InventoryAuth.requireAuth("issuingPage");
     if (!authContext) {
       throw new Error("AUTH_REQUIRED");
     }
@@ -364,6 +364,9 @@
     const recentIssued = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDevicePageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
       toUserPageBtn.style.display = "none";
     }

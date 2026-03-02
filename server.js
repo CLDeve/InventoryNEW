@@ -50,6 +50,7 @@ function normalizeMonthlyCostPrice(value) {
 function toRightsRow(rights) {
   return {
     device_master: Boolean(rights && rights.deviceMaster),
+    issuing_page: Boolean(rights && rights.issuingPage),
     user_setup: Boolean(rights && rights.userSetup),
     action_log: Boolean(rights && rights.actionLog),
     user_management: Boolean(rights && rights.userManagement)
@@ -59,6 +60,7 @@ function toRightsRow(rights) {
 function toRightsPayload(row) {
   return {
     deviceMaster: Boolean(row.device_master),
+    issuingPage: Boolean(row.issuing_page),
     userSetup: Boolean(row.user_setup),
     actionLog: Boolean(row.action_log),
     userManagement: Boolean(row.user_management)
@@ -66,7 +68,7 @@ function toRightsPayload(row) {
 }
 
 function hasAtLeastOneRight(rights) {
-  return Boolean(rights && (rights.deviceMaster || rights.userSetup || rights.actionLog || rights.userManagement));
+  return Boolean(rights && (rights.deviceMaster || rights.issuingPage || rights.userSetup || rights.actionLog || rights.userManagement));
 }
 
 function userFromRow(row) {
@@ -103,6 +105,7 @@ async function initDb() {
       password_hash TEXT NOT NULL,
       can_login BOOLEAN NOT NULL DEFAULT TRUE,
       device_master BOOLEAN NOT NULL DEFAULT FALSE,
+      issuing_page BOOLEAN NOT NULL DEFAULT FALSE,
       user_setup BOOLEAN NOT NULL DEFAULT FALSE,
       action_log BOOLEAN NOT NULL DEFAULT FALSE,
       user_management BOOLEAN NOT NULL DEFAULT FALSE,
@@ -110,6 +113,11 @@ async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS issuing_page BOOLEAN`);
+  await pool.query(`UPDATE users SET issuing_page = FALSE WHERE issuing_page IS NULL`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN issuing_page SET DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN issuing_page SET NOT NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS device_records (
@@ -198,7 +206,7 @@ async function ensureBootstrapAdmin() {
     `SELECT COUNT(*)::int AS count
      FROM users
      WHERE can_login = TRUE
-       AND (device_master = TRUE OR user_setup = TRUE OR action_log = TRUE OR user_management = TRUE)`
+       AND (device_master = TRUE OR issuing_page = TRUE OR user_setup = TRUE OR action_log = TRUE OR user_management = TRUE)`
   );
 
   if (activeResult.rows[0].count > 0) return;
@@ -213,6 +221,7 @@ async function ensureBootstrapAdmin() {
            password_hash = $3,
            can_login = TRUE,
            device_master = TRUE,
+           issuing_page = TRUE,
            user_setup = TRUE,
            action_log = TRUE,
            user_management = TRUE,
@@ -233,8 +242,8 @@ async function ensureBootstrapAdmin() {
   await pool.query(
     `INSERT INTO users (
       id, username, full_name, password_hash, can_login,
-      device_master, user_setup, action_log, user_management
-    ) VALUES ($1, $2, $3, $4, TRUE, TRUE, TRUE, TRUE, TRUE)`,
+      device_master, issuing_page, user_setup, action_log, user_management
+    ) VALUES ($1, $2, $3, $4, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)`,
     [createId(), "ADMIN", "SYSTEM ADMINISTRATOR", passwordHash]
   );
 
@@ -488,7 +497,7 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
   return res.json({ records });
 });
 
-app.get("/api/device-records/available", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+app.get("/api/device-records/available", authMiddleware, requireRight("issuingPage"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, device_id, imei_number, device_model, mobile_number, sim_card_number,
             contract_number, contract_start_date, contract_end_date,
@@ -627,7 +636,7 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
   return res.json({ importedCount, skippedCount });
 });
 
-app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+app.post("/api/device-records/issue", authMiddleware, requireRight("issuingPage"), async (req, res) => {
   const deviceId = normalizeUpper(req.body && req.body.deviceId);
   const imeiNumber = normalizeUpper(req.body && req.body.imeiNumber);
   const issuedTo = normalizeUpper(req.body && req.body.issuedTo);
@@ -801,7 +810,7 @@ app.post("/api/user-setup-records/bulk", authMiddleware, requireRight("userSetup
 app.get("/api/users", authMiddleware, requireRight("userManagement"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, full_name, can_login,
-            device_master, user_setup, action_log, user_management,
+            device_master, issuing_page, user_setup, action_log, user_management,
             created_at, updated_at
      FROM users
      ORDER BY username ASC`
@@ -839,8 +848,8 @@ app.post("/api/users", authMiddleware, requireRight("userManagement"), async (re
   await pool.query(
     `INSERT INTO users (
       id, username, full_name, password_hash, can_login,
-      device_master, user_setup, action_log, user_management
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      device_master, issuing_page, user_setup, action_log, user_management
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       id,
       username,
@@ -848,6 +857,7 @@ app.post("/api/users", authMiddleware, requireRight("userManagement"), async (re
       passwordHash,
       canLogin,
       rights.device_master,
+      rights.issuing_page,
       rights.user_setup,
       rights.action_log,
       rights.user_management
@@ -869,7 +879,7 @@ app.post("/api/users", authMiddleware, requireRight("userManagement"), async (re
 
   const result = await pool.query(
     `SELECT id, username, full_name, can_login,
-            device_master, user_setup, action_log, user_management,
+            device_master, issuing_page, user_setup, action_log, user_management,
             created_at, updated_at
      FROM users WHERE id = $1`,
     [id]
@@ -917,9 +927,10 @@ app.put("/api/users/:id", authMiddleware, requireRight("userManagement"), async 
          password_hash = $4,
          can_login = $5,
          device_master = $6,
-         user_setup = $7,
-         action_log = $8,
-         user_management = $9,
+         issuing_page = $7,
+         user_setup = $8,
+         action_log = $9,
+         user_management = $10,
          updated_at = NOW()
      WHERE id = $1`,
     [
@@ -929,6 +940,7 @@ app.put("/api/users/:id", authMiddleware, requireRight("userManagement"), async 
       passwordHash,
       canLogin,
       rights.device_master,
+      rights.issuing_page,
       rights.user_setup,
       rights.action_log,
       rights.user_management
@@ -945,9 +957,10 @@ app.put("/api/users/:id", authMiddleware, requireRight("userManagement"), async 
            password_hash = $4,
            can_login = $5,
            device_master = $6,
-           user_setup = $7,
-           action_log = $8,
-           user_management = $9,
+           issuing_page = $7,
+           user_setup = $8,
+           action_log = $9,
+           user_management = $10,
            updated_at = NOW()
        WHERE id = $1`,
       [
@@ -957,6 +970,7 @@ app.put("/api/users/:id", authMiddleware, requireRight("userManagement"), async 
         prev.password_hash,
         prev.can_login,
         prev.device_master,
+        prev.issuing_page,
         prev.user_setup,
         prev.action_log,
         prev.user_management
@@ -974,7 +988,7 @@ app.put("/api/users/:id", authMiddleware, requireRight("userManagement"), async 
 
   const result = await pool.query(
     `SELECT id, username, full_name, can_login,
-            device_master, user_setup, action_log, user_management,
+            device_master, issuing_page, user_setup, action_log, user_management,
             created_at, updated_at
      FROM users WHERE id = $1`,
     [id]

@@ -384,6 +384,9 @@
     let records = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
+      openIssuingPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
       toggleUserPageBtn.style.display = "none";
     }

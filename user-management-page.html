@@ -300,6 +300,10 @@
             Device Master Access
           </label>
           <label class="rights-item">
+            <input id="rightIssuingPage" type="checkbox" checked>
+            Issuing Page Access
+          </label>
+          <label class="rights-item">
             <input id="rightUserSetup" type="checkbox" checked>
             User Setup Access
           </label>
@@ -361,6 +365,7 @@
     const passwordInput = document.getElementById("password");
     const canLoginInput = document.getElementById("canLogin");
     const rightDeviceMasterInput = document.getElementById("rightDeviceMaster");
+    const rightIssuingPageInput = document.getElementById("rightIssuingPage");
     const rightUserSetupInput = document.getElementById("rightUserSetup");
     const rightActionLogInput = document.getElementById("rightActionLog");
     const rightUserManagementInput = document.getElementById("rightUserManagement");
@@ -372,6 +377,8 @@
 
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
       toIssuingPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
@@ -410,6 +417,7 @@
     function getRightsFromForm() {
       return {
         deviceMaster: rightDeviceMasterInput.checked,
+        issuingPage: rightIssuingPageInput.checked,
         userSetup: rightUserSetupInput.checked,
         actionLog: rightActionLogInput.checked,
         userManagement: rightUserManagementInput.checked
@@ -419,6 +427,7 @@
     function rightsSummary(user) {
       const map = [
         ["deviceMaster", "DEVICE MASTER"],
+        ["issuingPage", "ISSUING PAGE"],
         ["userSetup", "USER SETUP"],
         ["actionLog", "ACTION LOG"],
         ["userManagement", "USER MANAGEMENT"]
@@ -456,6 +465,7 @@
       form.reset();
       userIdInput.value = "";
       rightDeviceMasterInput.checked = true;
+      rightIssuingPageInput.checked = true;
       rightUserSetupInput.checked = true;
       rightActionLogInput.checked = true;
       rightUserManagementInput.checked = true;
@@ -470,6 +480,7 @@
       passwordInput.value = "";
       canLoginInput.checked = Boolean(user.canLogin);
       rightDeviceMasterInput.checked = Boolean(user.rights && user.rights.deviceMaster);
+      rightIssuingPageInput.checked = Boolean(user.rights && user.rights.issuingPage);
       rightUserSetupInput.checked = Boolean(user.rights && user.rights.userSetup);
       rightActionLogInput.checked = Boolean(user.rights && user.rights.actionLog);
       rightUserManagementInput.checked = Boolean(user.rights && user.rights.userManagement);

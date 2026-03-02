@@ -360,6 +360,8 @@
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toggleDevicePageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
       openIssuingPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
