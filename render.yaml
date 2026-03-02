@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: inventorynew
+    name: inventorynew-app
     env: node
     branch: main
     buildCommand: npm install
@@ -16,10 +16,10 @@ services:
         value: ADMIN123
       - key: DATABASE_URL
         fromDatabase:
-          name: inventorynew-db
+          name: inventorynew-db2
           property: connectionString
 
 databases:
-  - name: inventorynew-db
+  - name: inventorynew-db2
     databaseName: inventorynew
     user: inventorynew
