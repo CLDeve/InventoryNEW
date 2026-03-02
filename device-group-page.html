@@ -13,6 +13,7 @@
       --accent: #0f766e;
       --accent-dark: #0b5e58;
       --border: #d1d5db;
+      --warning: #9a3412;
     }
 
     * {
@@ -27,20 +28,9 @@
     }
 
     .container {
-      max-width: 1280px;
+      max-width: 980px;
       margin: 32px auto;
       padding: 0 16px 24px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 28px;
-    }
-
-    h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-      text-transform: uppercase;
     }
 
     .page-head {
@@ -51,25 +41,9 @@
       margin-bottom: 16px;
     }
 
-    .inline-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .nav-btn {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 12px;
-      font-size: 14px;
-      color: #111827;
-      text-decoration: none;
-      background: #e5e7eb;
-      white-space: nowrap;
-    }
-
-    .nav-btn:hover {
-      background: #d1d5db;
+    h1 {
+      margin: 0;
+      font-size: 28px;
     }
 
     .session-bar {
@@ -93,91 +67,79 @@
       text-transform: uppercase;
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
-      padding: 16px;
-    }
-
-    .status {
-      min-height: 18px;
-      margin-bottom: 12px;
-      color: #065f46;
-      font-size: 13px;
-      text-transform: uppercase;
-    }
-
-    .toolbar {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 14px;
-    }
-
-    button {
+    .logout-btn {
       border: 0;
       border-radius: 8px;
       padding: 10px 14px;
       font-size: 14px;
       cursor: pointer;
-      background: var(--accent);
-      color: #fff;
+      background: #e5e7eb;
+      color: #111827;
     }
 
-    button:hover {
-      background: var(--accent-dark);
+    .logout-btn:hover {
+      background: #d1d5db;
     }
 
-    .cards {
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 18px;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #065f46;
+    }
+
+    .group-buttons {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
 
-    .count {
-      margin-bottom: 8px;
-      color: var(--muted);
-      font-size: 12px;
+    .group-btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 24px 16px;
+      font-size: 18px;
       font-weight: 700;
+      cursor: pointer;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      background: var(--accent);
+      transition: transform 0.12s ease, background 0.12s ease;
     }
 
-    .table-wrap {
-      overflow-x: auto;
+    .group-btn:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 420px;
-      font-size: 14px;
+    .group-btn.alt {
+      background: #4b5563;
     }
 
-    th, td {
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-      padding: 10px;
-      vertical-align: top;
+    .group-btn.alt:hover {
+      background: #374151;
     }
 
-    th {
-      background: #f9fafb;
-      font-weight: 600;
-      white-space: nowrap;
-      text-transform: uppercase;
-      font-size: 12px;
-    }
-
-    .empty {
-      color: var(--muted);
-      text-align: center;
-      padding: 18px 10px;
-      text-transform: uppercase;
-    }
-
-    @media (max-width: 920px) {
-      .cards {
+    @media (max-width: 700px) {
+      .group-buttons {
         grid-template-columns: 1fr;
       }
     }
@@ -187,61 +149,19 @@
   <main class="container">
     <div class="page-head">
       <h1>Device Group Page</h1>
-      <div class="inline-actions">
-        <a class="nav-btn" id="toDashboardPageBtn" href="dashboard-page.html">Dashboard Page</a>
-        <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
-        <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
-      </div>
     </div>
+
     <div class="session-bar">
       <span class="user-pill" id="currentUserText"></span>
-      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
+      <button class="logout-btn" type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
     </div>
 
     <section class="card">
+      <p class="subtitle">Select Device Group</p>
       <div id="status" class="status" aria-live="polite"></div>
-      <div class="toolbar">
-        <button type="button" id="refreshBtn">Refresh</button>
-      </div>
-
-      <div class="cards">
-        <section class="card">
-          <h2>Mobile Devices</h2>
-          <div class="count" id="mobileCount">0 Device(s)</div>
-          <div class="table-wrap">
-            <table aria-label="Mobile devices">
-              <thead>
-                <tr>
-                  <th>Device ID</th>
-                  <th>Device Model</th>
-                  <th>Mobile Number</th>
-                </tr>
-              </thead>
-              <tbody id="mobileBody">
-                <tr><td class="empty" colspan="3">No records.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>BWC</h2>
-          <div class="count" id="bwcCount">0 Device(s)</div>
-          <div class="table-wrap">
-            <table aria-label="BWC devices">
-              <thead>
-                <tr>
-                  <th>Device ID</th>
-                  <th>Device Model</th>
-                  <th>Mobile Number</th>
-                </tr>
-              </thead>
-              <tbody id="bwcBody">
-                <tr><td class="empty" colspan="3">No records.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+      <div class="group-buttons">
+        <button class="group-btn" id="mobileDevicesBtn" type="button">Mobile Devices</button>
+        <button class="group-btn alt" id="bwcBtn" type="button">BWC</button>
       </div>
     </section>
   </main>
@@ -254,107 +174,30 @@
     }
 
     const activeUser = authContext.user;
-    const toDashboardPageBtn = document.getElementById("toDashboardPageBtn");
-    const toDevicePageBtn = document.getElementById("toDevicePageBtn");
-    const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
     const currentUserText = document.getElementById("currentUserText");
     const statusEl = document.getElementById("status");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const mobileCount = document.getElementById("mobileCount");
-    const bwcCount = document.getElementById("bwcCount");
-    const mobileBody = document.getElementById("mobileBody");
-    const bwcBody = document.getElementById("bwcBody");
+    const mobileDevicesBtn = document.getElementById("mobileDevicesBtn");
+    const bwcBtn = document.getElementById("bwcBtn");
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
-    if (!window.InventoryAuth.hasRight(activeUser, "dashboardPage")) {
-      toDashboardPageBtn.style.display = "none";
-    }
-    if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
-      toIssuingPageBtn.style.display = "none";
-    }
 
-    function setStatus(message, isError = false) {
+    function setStatus(message, isWarning = false) {
       statusEl.textContent = String(message || "").toUpperCase();
-      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+      statusEl.style.color = isWarning ? "var(--warning)" : "#065f46";
     }
 
-    function normalizeText(value) {
-      return String(value || "").trim().toUpperCase();
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-    }
-
-    function renderBody(bodyEl, records) {
-      if (!records.length) {
-        bodyEl.innerHTML = '<tr><td class="empty" colspan="3">No records.</td></tr>';
-        return;
-      }
-
-      bodyEl.innerHTML = records.map((record) => `
-        <tr>
-          <td>${escapeHtml(record.deviceId || "")}</td>
-          <td>${escapeHtml(record.deviceModel || "")}</td>
-          <td>${escapeHtml(record.mobileNumber || "")}</td>
-        </tr>
-      `).join("");
-    }
-
-    function isBwc(record) {
-      return normalizeText(record.deviceModel).includes("BWC");
-    }
-
-    async function loadData() {
-      const data = await window.InventoryAuth.apiRequest("/api/device-records");
-      const records = Array.isArray(data.records) ? data.records : [];
-      const bwcRecords = records.filter((record) => isBwc(record));
-      const mobileRecords = records.filter((record) => !isBwc(record));
-
-      mobileCount.textContent = `${mobileRecords.length} DEVICE(S)`;
-      bwcCount.textContent = `${bwcRecords.length} DEVICE(S)`;
-
-      renderBody(mobileBody, mobileRecords);
-      renderBody(bwcBody, bwcRecords);
-    }
-
-    refreshBtn.addEventListener("click", async () => {
-      try {
-        await loadData();
-        setStatus("Device groups refreshed.");
-        window.InventoryAuth.addActionLog("Device Group Page", "REFRESH", `USER ${activeUser.username}: Refreshed device groups.`);
-      } catch (err) {
-        setStatus(err.message || "Failed to load device groups.", true);
-      }
+    mobileDevicesBtn.addEventListener("click", () => {
+      setStatus("OPENING MOBILE DEVICES PAGES.");
+      window.InventoryAuth.addActionLog("Device Group Page", "NAVIGATE", `USER ${activeUser.username}: Selected MOBILE DEVICES.`);
+      window.location.href = "dashboard-page.html";
     });
 
-    toDashboardPageBtn.addEventListener("click", () => {
-      window.InventoryAuth.addActionLog("Device Group Page", "NAVIGATE", `USER ${activeUser.username}: Opened Dashboard Page.`);
+    bwcBtn.addEventListener("click", () => {
+      setStatus("BWC PAGE IS NOT CONFIGURED YET.", true);
+      window.InventoryAuth.addActionLog("Device Group Page", "SELECT GROUP", `USER ${activeUser.username}: Selected BWC.`);
     });
 
-    toDevicePageBtn.addEventListener("click", () => {
-      window.InventoryAuth.addActionLog("Device Group Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
-    });
-
-    toIssuingPageBtn.addEventListener("click", () => {
-      window.InventoryAuth.addActionLog("Device Group Page", "NAVIGATE", `USER ${activeUser.username}: Opened Issuing Page.`);
-    });
-
-    async function initPage() {
-      try {
-        await loadData();
-        window.InventoryAuth.addActionLog("Device Group Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Device Group Page.`);
-      } catch (err) {
-        setStatus(err.message || "Failed to load device groups.", true);
-      }
-    }
-
-    initPage();
+    window.InventoryAuth.addActionLog("Device Group Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Device Group Page.`);
   </script>
 </body>
 </html>
