@@ -53,7 +53,8 @@ const InventoryAuth = (() => {
 
   function firstAllowedPage(user) {
     if (!user) return "login-page.html";
-    if (hasRight(user, "deviceMaster")) return "dashboard-page.html";
+    if (hasRight(user, "dashboardPage")) return "dashboard-page.html";
+    if (hasRight(user, "deviceMaster")) return "device-master-page.html";
     if (hasRight(user, "issuingPage")) return "issuing-page.html";
     if (hasRight(user, "userSetup")) return "user-setup-page.html";
     if (hasRight(user, "actionLog")) return "action-log-page.html";
@@ -188,6 +189,7 @@ const InventoryAuth = (() => {
       canLogin: Boolean(userPayload.canLogin),
       rights: {
         deviceMaster: Boolean(userPayload.rights && userPayload.rights.deviceMaster),
+        dashboardPage: Boolean(userPayload.rights && userPayload.rights.dashboardPage),
         issuingPage: Boolean(userPayload.rights && userPayload.rights.issuingPage),
         userSetup: Boolean(userPayload.rights && userPayload.rights.userSetup),
         actionLog: Boolean(userPayload.rights && userPayload.rights.actionLog),

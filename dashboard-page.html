@@ -288,7 +288,7 @@
 
   <script src="auth.js"></script>
   <script>
-    const authContext = window.InventoryAuth.requireAuth("deviceMaster");
+    const authContext = window.InventoryAuth.requireAuth("dashboardPage");
     if (!authContext) {
       throw new Error("AUTH_REQUIRED");
     }
@@ -310,6 +310,9 @@
     const modelBody = document.getElementById("modelBody");
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDevicePageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "issuingPage")) {
       toIssuingPageBtn.style.display = "none";
     }

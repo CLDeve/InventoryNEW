@@ -222,7 +222,7 @@
     let actionLogs = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
-    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+    if (!window.InventoryAuth.hasRight(activeUser, "dashboardPage")) {
       toDashboardPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
