@@ -114,6 +114,7 @@ async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS device_records (
       id TEXT PRIMARY KEY,
+      device_id TEXT NOT NULL,
       imei_number TEXT NOT NULL,
       device_model TEXT NOT NULL,
       mobile_number TEXT NOT NULL,
@@ -133,21 +134,27 @@ async function initDb() {
   `);
 
   // Forward-compatible migration for already-created databases.
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS device_id TEXT`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m TEXT`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS monthly_cost_price NUMERIC(12,2)`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued BOOLEAN`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_to TEXT`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_by TEXT`);
+  await pool.query(`UPDATE device_records SET device_id = imei_number WHERE device_id IS NULL OR device_id = ''`);
   await pool.query(`UPDATE device_records SET m2m = 'SOTI' WHERE m2m IS NULL OR m2m = ''`);
   await pool.query(`UPDATE device_records SET monthly_cost_price = 0 WHERE monthly_cost_price IS NULL`);
   await pool.query(`UPDATE device_records SET issued = FALSE WHERE issued IS NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET DEFAULT 'SOTI'`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET DEFAULT 0`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN device_id SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET NOT NULL`);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_device_records_device_id ON device_records (device_id);
+  `);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_device_records_imei_number ON device_records (imei_number);
   `);
@@ -298,6 +305,7 @@ function requireRight(rightKey) {
 
 function validateDeviceRecordInput(payload) {
   const record = {
+    deviceId: normalizeUpper(payload.deviceId),
     imeiNumber: normalizeUpper(payload.imeiNumber),
     deviceModel: normalizeUpper(payload.deviceModel),
     mobileNumber: normalizeUpper(payload.mobileNumber),
@@ -310,6 +318,7 @@ function validateDeviceRecordInput(payload) {
   };
 
   const required = [
+    record.deviceId,
     record.imeiNumber,
     record.deviceModel,
     record.mobileNumber,
@@ -448,7 +457,7 @@ app.delete("/api/action-logs", authMiddleware, requireRight("actionLog"), async 
 
 app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
   const result = await pool.query(
-    `SELECT id, imei_number, device_model, mobile_number, sim_card_number,
+    `SELECT id, device_id, imei_number, device_model, mobile_number, sim_card_number,
             contract_number, contract_start_date, contract_end_date,
             m2m, monthly_cost_price, issued, issued_at, issued_to, issued_by
      FROM device_records
@@ -457,6 +466,7 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
 
   const records = result.rows.map((row) => ({
     id: row.id,
+    deviceId: row.device_id,
     imeiNumber: row.imei_number,
     deviceModel: row.device_model,
     mobileNumber: row.mobile_number,
@@ -477,7 +487,7 @@ app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), asy
 
 app.get("/api/device-records/available", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
   const result = await pool.query(
-    `SELECT id, imei_number, device_model, mobile_number, sim_card_number,
+    `SELECT id, device_id, imei_number, device_model, mobile_number, sim_card_number,
             contract_number, contract_start_date, contract_end_date,
             m2m, monthly_cost_price
      FROM device_records
@@ -487,6 +497,7 @@ app.get("/api/device-records/available", authMiddleware, requireRight("deviceMas
 
   const records = result.rows.map((row) => ({
     id: row.id,
+    deviceId: row.device_id,
     imeiNumber: row.imei_number,
     deviceModel: row.device_model,
     mobileNumber: row.mobile_number,
@@ -512,11 +523,12 @@ app.post("/api/device-records", authMiddleware, requireRight("deviceMaster"), as
 
   await pool.query(
     `INSERT INTO device_records (
-      id, imei_number, device_model, mobile_number, sim_card_number,
+      id, device_id, imei_number, device_model, mobile_number, sim_card_number,
       contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [
       id,
+      record.deviceId,
       record.imeiNumber,
       record.deviceModel,
       record.mobileNumber,
@@ -582,11 +594,12 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
     const record = validated.record;
     await pool.query(
       `INSERT INTO device_records (
-        id, imei_number, device_model, mobile_number, sim_card_number,
+        id, device_id, imei_number, device_model, mobile_number, sim_card_number,
         contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         createId(),
+        record.deviceId,
         record.imeiNumber,
         record.deviceModel,
         record.mobileNumber,
@@ -637,7 +650,7 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster
          updated_at = NOW()
      FROM picked
      WHERE d.id = picked.id
-     RETURNING d.id, d.imei_number, d.device_model, d.mobile_number, d.sim_card_number,
+     RETURNING d.id, d.device_id, d.imei_number, d.device_model, d.mobile_number, d.sim_card_number,
                d.contract_number, d.contract_start_date, d.contract_end_date,
                d.m2m, d.monthly_cost_price, d.issued, d.issued_at, d.issued_to, d.issued_by`,
     [imeiNumber, req.user.username, issuedTo]
@@ -658,6 +671,7 @@ app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster
   return res.json({
     record: {
       id: row.id,
+      deviceId: row.device_id,
       imeiNumber: row.imei_number,
       deviceModel: row.device_model,
       mobileNumber: row.mobile_number,

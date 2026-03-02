@@ -264,6 +264,10 @@
       <form id="deviceForm">
         <div class="grid">
           <div class="field">
+            <label for="deviceId">Device ID</label>
+            <input id="deviceId" name="deviceId" required>
+          </div>
+          <div class="field">
             <label for="imeiNumber">IMEI Number</label>
             <input id="imeiNumber" name="imeiNumber" required>
           </div>
@@ -315,7 +319,7 @@
             <button class="btn-secondary" type="button" id="bulkUploadBtn">Upload CSV</button>
             <button class="btn-secondary" type="button" id="downloadTemplateBtn">Download Template</button>
           </div>
-          <div class="hint">Required headers: IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price</div>
+          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price</div>
         </div>
         <div class="hint">Records are saved in the server database.</div>
       </form>
@@ -325,6 +329,7 @@
       <table aria-label="Device master records">
         <thead>
           <tr>
+            <th>Device ID</th>
             <th>IMEI Number</th>
             <th>Device Model</th>
             <th>Mobile Number</th>
@@ -338,7 +343,7 @@
           </tr>
         </thead>
         <tbody id="recordsBody">
-          <tr><td class="empty" colspan="10">No records yet.</td></tr>
+          <tr><td class="empty" colspan="11">No records yet.</td></tr>
         </tbody>
       </table>
     </section>
@@ -365,6 +370,7 @@
     const currentUserText = document.getElementById("currentUserText");
     const statusEl = document.getElementById("status");
     const DEVICE_COLUMNS = [
+      { key: "deviceId", header: "Device ID" },
       { key: "imeiNumber", header: "IMEI Number" },
       { key: "deviceModel", header: "Device Model" },
       { key: "mobileNumber", header: "Mobile Number" },
@@ -408,12 +414,13 @@
 
     function renderRecords() {
       if (records.length === 0) {
-        recordsBody.innerHTML = '<tr><td class="empty" colspan="10">No records yet.</td></tr>';
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="11">No records yet.</td></tr>';
         return;
       }
 
       recordsBody.innerHTML = records.map((record) => `
         <tr>
+          <td>${escapeHtml(record.deviceId || "")}</td>
           <td>${escapeHtml(record.imeiNumber)}</td>
           <td>${escapeHtml(record.deviceModel)}</td>
           <td>${escapeHtml(record.mobileNumber)}</td>
@@ -431,6 +438,7 @@
     function toCsv(rowsData) {
       const header = DEVICE_COLUMNS.map((column) => column.header);
       const rows = rowsData.map((r) => [
+        r.deviceId || "",
         r.imeiNumber,
         r.deviceModel,
         r.mobileNumber,
@@ -538,6 +546,7 @@
       event.preventDefault();
       const formData = new FormData(form);
       const record = {
+        deviceId: normalizeText(formData.get("deviceId")),
         imeiNumber: normalizeText(formData.get("imeiNumber")),
         deviceModel: normalizeText(formData.get("deviceModel")),
         mobileNumber: normalizeText(formData.get("mobileNumber")),
@@ -599,7 +608,7 @@
     downloadTemplateBtn.addEventListener("click", () => {
       const template = [
         DEVICE_COLUMNS.map((column) => column.header),
-        ["123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01", "SOTI", "35.00"]
+        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "2026-01-01", "2028-01-01", "SOTI", "35.00"]
       ]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");

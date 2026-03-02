@@ -299,7 +299,7 @@
 
     <section class="card table-wrap">
       <div class="toolbar">
-        <input id="searchInput" placeholder="Search IMEI, model, mobile, SIM, contract, M2M">
+        <input id="searchInput" placeholder="Search Device ID, IMEI, model, mobile, SIM, contract, M2M">
         <button class="btn-primary" type="button" id="refreshBtn">Refresh Devices</button>
         <button type="button" id="exportCsvBtn">Export CSV</button>
         <span class="count" id="countText">0 DEVICE(S)</span>
@@ -307,6 +307,7 @@
       <table aria-label="Issuing devices">
         <thead>
           <tr>
+            <th>Device ID</th>
             <th>IMEI Number</th>
             <th>Device Model</th>
             <th>Mobile Number</th>
@@ -319,7 +320,7 @@
           </tr>
         </thead>
         <tbody id="recordsBody">
-          <tr><td class="empty" colspan="9">No records yet.</td></tr>
+          <tr><td class="empty" colspan="10">No records yet.</td></tr>
         </tbody>
       </table>
       <div class="pager">
@@ -409,6 +410,7 @@
       if (!keyword) return allRecords;
       return allRecords.filter((record) => {
         const haystack = [
+          record.deviceId,
           record.imeiNumber,
           record.deviceModel,
           record.mobileNumber,
@@ -454,12 +456,13 @@
       nextPageBtn.disabled = currentPage >= totalPages;
 
       if (pageItems.length === 0) {
-        recordsBody.innerHTML = '<tr><td class="empty" colspan="9">No records found.</td></tr>';
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="10">No records found.</td></tr>';
         return;
       }
 
       recordsBody.innerHTML = pageItems.map((record) => `
         <tr>
+          <td>${escapeHtml(record.deviceId || "")}</td>
           <td>${escapeHtml(record.imeiNumber || "")}</td>
           <td>${escapeHtml(record.deviceModel || "")}</td>
           <td>${escapeHtml(record.mobileNumber || "")}</td>
@@ -475,6 +478,7 @@
 
     function toCsv(rowsData) {
       const header = [
+        "Device ID",
         "IMEI Number",
         "Device Model",
         "Mobile Number",
@@ -486,6 +490,7 @@
         "Monthly Cost Price"
       ];
       const rows = rowsData.map((record) => [
+        record.deviceId || "",
         record.imeiNumber || "",
         record.deviceModel || "",
         record.mobileNumber || "",
