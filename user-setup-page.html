@@ -259,6 +259,7 @@
       <h1>User Setup Page</h1>
       <div class="inline-actions">
         <a class="nav-btn" id="toggleDevicePageBtn" href="device-master-page.html">Device Master Page</a>
+        <a class="nav-btn" id="openIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="openLogPageBtn" href="action-log-page.html">Action Log Page</a>
         <a class="nav-btn" id="openUserMgmtPageBtn" href="user-management-page.html">User Management Page</a>
       </div>
@@ -342,6 +343,7 @@
     const bulkUploadBtn = document.getElementById("bulkUploadBtn");
     const downloadTemplateBtn = document.getElementById("downloadTemplateBtn");
     const toggleDevicePageBtn = document.getElementById("toggleDevicePageBtn");
+    const openIssuingPageBtn = document.getElementById("openIssuingPageBtn");
     const openLogPageBtn = document.getElementById("openLogPageBtn");
     const openUserMgmtPageBtn = document.getElementById("openUserMgmtPageBtn");
     const currentUserText = document.getElementById("currentUserText");
@@ -358,6 +360,7 @@
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toggleDevicePageBtn.style.display = "none";
+      openIssuingPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
       openLogPageBtn.style.display = "none";
@@ -624,6 +627,10 @@
 
     toggleDevicePageBtn.addEventListener("click", () => {
       window.InventoryAuth.addActionLog("User Setup Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    openIssuingPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("User Setup Page", "NAVIGATE", `USER ${activeUser.username}: Opened Issuing Page.`);
     });
 
     openLogPageBtn.addEventListener("click", () => {

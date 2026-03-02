@@ -167,6 +167,7 @@
       <h1>Action Log Page</h1>
       <div class="inline-actions">
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
+        <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
         <a class="nav-btn" id="toUserMgmtPageBtn" href="user-management-page.html">User Management Page</a>
       </div>
@@ -212,6 +213,7 @@
     const exportLogCsvBtn = document.getElementById("exportLogCsvBtn");
     const clearLogBtn = document.getElementById("clearLogBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
+    const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
     const toUserPageBtn = document.getElementById("toUserPageBtn");
     const toUserMgmtPageBtn = document.getElementById("toUserMgmtPageBtn");
     const currentUserText = document.getElementById("currentUserText");
@@ -220,6 +222,7 @@
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
+      toIssuingPageBtn.style.display = "none";
     }
     if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
       toUserPageBtn.style.display = "none";
@@ -340,6 +343,10 @@
 
     toDevicePageBtn.addEventListener("click", () => {
       window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    toIssuingPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Action Log Page", "NAVIGATE", `USER ${activeUser.username}: Opened Issuing Page.`);
     });
 
     toUserPageBtn.addEventListener("click", () => {

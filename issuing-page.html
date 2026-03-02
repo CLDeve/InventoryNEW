@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Issuing Page</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-dark: #0b5e58;
+      --border: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 32px auto;
+      padding: 0 16px 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #111827;
+      text-decoration: none;
+      background: #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      background: #d1d5db;
+    }
+
+    .session-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #bae6fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: #065f46;
+      font-size: 13px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    input {
+      width: 100%;
+      max-width: 380px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      text-transform: uppercase;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .count {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 10px;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <h1>Issuing Page</h1>
+      <div class="inline-actions">
+        <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
+        <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
+        <a class="nav-btn" id="toActionLogPageBtn" href="action-log-page.html">Action Log Page</a>
+        <a class="nav-btn" id="toUserMgmtPageBtn" href="user-management-page.html">User Management Page</a>
+      </div>
+    </div>
+    <div class="session-bar">
+      <span class="user-pill" id="currentUserText"></span>
+      <button type="button" id="logoutBtn" onclick="if (window.InventoryAuth && typeof window.InventoryAuth.logout === 'function') { window.InventoryAuth.logout(); } else { localStorage.removeItem('inventoryToken'); window.location.href='login-page.html'; }">Logout</button>
+    </div>
+
+    <section class="card table-wrap">
+      <div id="status" class="status" aria-live="polite"></div>
+      <div class="toolbar">
+        <input id="searchInput" placeholder="Search IMEI, model, mobile, SIM, contract, M2M">
+        <button class="btn-primary" type="button" id="refreshBtn">Refresh Devices</button>
+        <button type="button" id="exportCsvBtn">Export CSV</button>
+        <span class="count" id="countText">0 DEVICE(S)</span>
+      </div>
+      <table aria-label="Issuing devices">
+        <thead>
+          <tr>
+            <th>IMEI Number</th>
+            <th>Device Model</th>
+            <th>Mobile Number</th>
+            <th>Sim Card Number</th>
+            <th>Contract Number</th>
+            <th>Contract Start Date</th>
+            <th>Contract End Date</th>
+            <th>M2M</th>
+            <th>Monthly Cost Price</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody">
+          <tr><td class="empty" colspan="9">No records yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const authContext = window.InventoryAuth.requireAuth("deviceMaster");
+    if (!authContext) {
+      throw new Error("AUTH_REQUIRED");
+    }
+
+    const activeUser = authContext.user;
+    const toDevicePageBtn = document.getElementById("toDevicePageBtn");
+    const toUserPageBtn = document.getElementById("toUserPageBtn");
+    const toActionLogPageBtn = document.getElementById("toActionLogPageBtn");
+    const toUserMgmtPageBtn = document.getElementById("toUserMgmtPageBtn");
+    const currentUserText = document.getElementById("currentUserText");
+    const statusEl = document.getElementById("status");
+    const searchInput = document.getElementById("searchInput");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
+    const countText = document.getElementById("countText");
+    const recordsBody = document.getElementById("recordsBody");
+    let allRecords = [];
+
+    currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "userSetup")) {
+      toUserPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "actionLog")) {
+      toActionLogPageBtn.style.display = "none";
+    }
+    if (!window.InventoryAuth.hasRight(activeUser, "userManagement")) {
+      toUserMgmtPageBtn.style.display = "none";
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#b91c1c" : "#065f46";
+    }
+
+    function normalizeText(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function formatMonthlyCostPrice(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return String(value || "");
+      return number.toFixed(2);
+    }
+
+    function renderRecords(records) {
+      countText.textContent = `${records.length} DEVICE(S)`;
+      if (records.length === 0) {
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="9">No records found.</td></tr>';
+        return;
+      }
+
+      recordsBody.innerHTML = records.map((record) => `
+        <tr>
+          <td>${escapeHtml(record.imeiNumber || "")}</td>
+          <td>${escapeHtml(record.deviceModel || "")}</td>
+          <td>${escapeHtml(record.mobileNumber || "")}</td>
+          <td>${escapeHtml(record.simCardNumber || "")}</td>
+          <td>${escapeHtml(record.contractNumber || "")}</td>
+          <td>${escapeHtml(record.contractStartDate || "")}</td>
+          <td>${escapeHtml(record.contractEndDate || "")}</td>
+          <td>${escapeHtml(record.m2m || "")}</td>
+          <td>${escapeHtml(formatMonthlyCostPrice(record.monthlyCostPrice))}</td>
+        </tr>
+      `).join("");
+    }
+
+    function getFilteredRecords() {
+      const keyword = normalizeText(searchInput.value);
+      if (!keyword) return allRecords;
+      return allRecords.filter((record) => {
+        const haystack = [
+          record.imeiNumber,
+          record.deviceModel,
+          record.mobileNumber,
+          record.simCardNumber,
+          record.contractNumber,
+          record.contractStartDate,
+          record.contractEndDate,
+          record.m2m,
+          record.monthlyCostPrice
+        ]
+          .map((item) => normalizeText(item))
+          .join(" ");
+        return haystack.includes(keyword);
+      });
+    }
+
+    function toCsv(rowsData) {
+      const header = [
+        "IMEI Number",
+        "Device Model",
+        "Mobile Number",
+        "Sim Card Number",
+        "Contract Number",
+        "Contract Start Date",
+        "Contract End Date",
+        "M2M",
+        "Monthly Cost Price"
+      ];
+      const rows = rowsData.map((record) => [
+        record.imeiNumber || "",
+        record.deviceModel || "",
+        record.mobileNumber || "",
+        record.simCardNumber || "",
+        record.contractNumber || "",
+        record.contractStartDate || "",
+        record.contractEndDate || "",
+        record.m2m || "",
+        formatMonthlyCostPrice(record.monthlyCostPrice)
+      ]);
+      return [header, ...rows]
+        .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+    }
+
+    function downloadCsv(filename, content) {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function refreshRecords() {
+      const data = await window.InventoryAuth.apiRequest("/api/device-records");
+      allRecords = Array.isArray(data.records) ? data.records : [];
+      renderRecords(getFilteredRecords());
+    }
+
+    searchInput.addEventListener("input", () => {
+      searchInput.value = searchInput.value.toUpperCase();
+      renderRecords(getFilteredRecords());
+    });
+
+    refreshBtn.addEventListener("click", async () => {
+      try {
+        await refreshRecords();
+        setStatus("Device list refreshed.");
+        window.InventoryAuth.addActionLog("Issuing Page", "REFRESH DEVICES", `USER ${activeUser.username}: Refreshed issuing list.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to load devices.", true);
+      }
+    });
+
+    exportCsvBtn.addEventListener("click", () => {
+      const records = getFilteredRecords();
+      if (records.length === 0) {
+        setStatus("No device records available to export.", true);
+        return;
+      }
+      downloadCsv("issuing-device-list.csv", toCsv(records));
+      setStatus("CSV exported.");
+      window.InventoryAuth.addActionLog("Issuing Page", "EXPORT CSV", `USER ${activeUser.username}: Exported ${records.length} record(s).`);
+    });
+
+    toDevicePageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Issuing Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    toUserPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Issuing Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Setup Page.`);
+    });
+
+    toActionLogPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Issuing Page", "NAVIGATE", `USER ${activeUser.username}: Opened Action Log Page.`);
+    });
+
+    toUserMgmtPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Issuing Page", "NAVIGATE", `USER ${activeUser.username}: Opened User Management Page.`);
+    });
+
+    async function initPage() {
+      try {
+        await refreshRecords();
+        window.InventoryAuth.addActionLog("Issuing Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Issuing Page.`);
+      } catch (err) {
+        setStatus(err.message || "Failed to load devices.", true);
+      }
+    }
+
+    initPage();
+  </script>
+</body>
+</html>
