@@ -123,6 +123,10 @@ async function initDb() {
       contract_end_date DATE NOT NULL,
       m2m TEXT NOT NULL DEFAULT 'SOTI',
       monthly_cost_price NUMERIC(12,2) NOT NULL DEFAULT 0,
+      issued BOOLEAN NOT NULL DEFAULT FALSE,
+      issued_at TIMESTAMPTZ,
+      issued_to TEXT,
+      issued_by TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -131,12 +135,25 @@ async function initDb() {
   // Forward-compatible migration for already-created databases.
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS m2m TEXT`);
   await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS monthly_cost_price NUMERIC(12,2)`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued BOOLEAN`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_to TEXT`);
+  await pool.query(`ALTER TABLE device_records ADD COLUMN IF NOT EXISTS issued_by TEXT`);
   await pool.query(`UPDATE device_records SET m2m = 'SOTI' WHERE m2m IS NULL OR m2m = ''`);
   await pool.query(`UPDATE device_records SET monthly_cost_price = 0 WHERE monthly_cost_price IS NULL`);
+  await pool.query(`UPDATE device_records SET issued = FALSE WHERE issued IS NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET DEFAULT 'SOTI'`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET DEFAULT 0`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET DEFAULT FALSE`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN m2m SET NOT NULL`);
   await pool.query(`ALTER TABLE device_records ALTER COLUMN monthly_cost_price SET NOT NULL`);
+  await pool.query(`ALTER TABLE device_records ALTER COLUMN issued SET NOT NULL`);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_device_records_imei_number ON device_records (imei_number);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_device_records_issued_imei ON device_records (issued, imei_number);
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_setup_records (
@@ -432,8 +449,39 @@ app.delete("/api/action-logs", authMiddleware, requireRight("actionLog"), async 
 app.get("/api/device-records", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
   const result = await pool.query(
     `SELECT id, imei_number, device_model, mobile_number, sim_card_number,
-            contract_number, contract_start_date, contract_end_date, m2m, monthly_cost_price
+            contract_number, contract_start_date, contract_end_date,
+            m2m, monthly_cost_price, issued, issued_at, issued_to, issued_by
      FROM device_records
+     ORDER BY created_at DESC`
+  );
+
+  const records = result.rows.map((row) => ({
+    id: row.id,
+    imeiNumber: row.imei_number,
+    deviceModel: row.device_model,
+    mobileNumber: row.mobile_number,
+    simCardNumber: row.sim_card_number,
+    contractNumber: row.contract_number,
+    contractStartDate: row.contract_start_date,
+    contractEndDate: row.contract_end_date,
+    m2m: row.m2m,
+    monthlyCostPrice: row.monthly_cost_price,
+    issued: Boolean(row.issued),
+    issuedAt: row.issued_at,
+    issuedTo: row.issued_to,
+    issuedBy: row.issued_by
+  }));
+
+  return res.json({ records });
+});
+
+app.get("/api/device-records/available", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+  const result = await pool.query(
+    `SELECT id, imei_number, device_model, mobile_number, sim_card_number,
+            contract_number, contract_start_date, contract_end_date,
+            m2m, monthly_cost_price
+     FROM device_records
+     WHERE issued = FALSE
      ORDER BY created_at DESC`
   );
 
@@ -561,6 +609,70 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
   });
 
   return res.json({ importedCount, skippedCount });
+});
+
+app.post("/api/device-records/issue", authMiddleware, requireRight("deviceMaster"), async (req, res) => {
+  const imeiNumber = normalizeUpper(req.body && req.body.imeiNumber);
+  const issuedTo = normalizeUpper(req.body && req.body.issuedTo);
+
+  if (!imeiNumber) {
+    return res.status(400).json({ message: "IMEI NUMBER IS REQUIRED." });
+  }
+
+  const result = await pool.query(
+    `WITH picked AS (
+       SELECT id
+       FROM device_records
+       WHERE imei_number = $1
+         AND issued = FALSE
+       ORDER BY created_at ASC
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
+     )
+     UPDATE device_records d
+     SET issued = TRUE,
+         issued_at = NOW(),
+         issued_by = $2,
+         issued_to = NULLIF($3, ''),
+         updated_at = NOW()
+     FROM picked
+     WHERE d.id = picked.id
+     RETURNING d.id, d.imei_number, d.device_model, d.mobile_number, d.sim_card_number,
+               d.contract_number, d.contract_start_date, d.contract_end_date,
+               d.m2m, d.monthly_cost_price, d.issued, d.issued_at, d.issued_to, d.issued_by`,
+    [imeiNumber, req.user.username, issuedTo]
+  );
+
+  if (result.rowCount === 0) {
+    return res.status(404).json({ message: "DEVICE NOT FOUND OR ALREADY ISSUED." });
+  }
+
+  const row = result.rows[0];
+  await addActionLog({
+    page: "Issuing Page",
+    action: "ISSUE DEVICE",
+    details: `USER ${req.user.username}: IMEI ${row.imei_number}${issuedTo ? ` TO ${issuedTo}` : ""}`,
+    actorUsername: req.user.username
+  });
+
+  return res.json({
+    record: {
+      id: row.id,
+      imeiNumber: row.imei_number,
+      deviceModel: row.device_model,
+      mobileNumber: row.mobile_number,
+      simCardNumber: row.sim_card_number,
+      contractNumber: row.contract_number,
+      contractStartDate: row.contract_start_date,
+      contractEndDate: row.contract_end_date,
+      m2m: row.m2m,
+      monthlyCostPrice: row.monthly_cost_price,
+      issued: Boolean(row.issued),
+      issuedAt: row.issued_at,
+      issuedTo: row.issued_to,
+      issuedBy: row.issued_by
+    }
+  });
 });
 
 app.get("/api/user-setup-records", authMiddleware, requireRight("userSetup"), async (req, res) => {
