@@ -214,6 +214,7 @@
     <div class="page-head">
       <h1>Dashboard Page</h1>
       <div class="inline-actions">
+        <a class="nav-btn" id="toDeviceGroupPageBtn" href="device-group-page.html">Device Group Page</a>
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
         <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
@@ -294,6 +295,7 @@
     }
 
     const activeUser = authContext.user;
+    const toDeviceGroupPageBtn = document.getElementById("toDeviceGroupPageBtn");
     const toDevicePageBtn = document.getElementById("toDevicePageBtn");
     const toIssuingPageBtn = document.getElementById("toIssuingPageBtn");
     const toUserPageBtn = document.getElementById("toUserPageBtn");
@@ -310,6 +312,9 @@
     const modelBody = document.getElementById("modelBody");
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      toDeviceGroupPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
       toDevicePageBtn.style.display = "none";
     }
@@ -410,6 +415,10 @@
 
     toDevicePageBtn.addEventListener("click", () => {
       window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Master Page.`);
+    });
+
+    toDeviceGroupPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Group Page.`);
     });
 
     toIssuingPageBtn.addEventListener("click", () => {

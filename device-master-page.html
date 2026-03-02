@@ -248,6 +248,7 @@
     <div class="page-head">
       <h1>Device Master Page</h1>
       <div class="inline-actions">
+        <a class="nav-btn" id="openDeviceGroupPageBtn" href="device-group-page.html">Device Group Page</a>
         <a class="nav-btn" id="openDashboardPageBtn" href="dashboard-page.html">Dashboard Page</a>
         <a class="nav-btn" id="openIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toggleUserPageBtn" href="user-setup-page.html">User Setup Page</a>
@@ -364,6 +365,7 @@
     const bulkCsvFile = document.getElementById("bulkCsvFile");
     const bulkUploadBtn = document.getElementById("bulkUploadBtn");
     const downloadTemplateBtn = document.getElementById("downloadTemplateBtn");
+    const openDeviceGroupPageBtn = document.getElementById("openDeviceGroupPageBtn");
     const openDashboardPageBtn = document.getElementById("openDashboardPageBtn");
     const openIssuingPageBtn = document.getElementById("openIssuingPageBtn");
     const toggleUserPageBtn = document.getElementById("toggleUserPageBtn");
@@ -386,6 +388,9 @@
     let records = [];
 
     currentUserText.textContent = `USER: ${activeUser.username} (${activeUser.fullName})`;
+    if (!window.InventoryAuth.hasRight(activeUser, "deviceMaster")) {
+      openDeviceGroupPageBtn.style.display = "none";
+    }
     if (!window.InventoryAuth.hasRight(activeUser, "dashboardPage")) {
       openDashboardPageBtn.style.display = "none";
     }
@@ -688,6 +693,10 @@
       } catch (err) {
         setStatus(err.message || "Bulk upload failed.", true);
       }
+    });
+
+    openDeviceGroupPageBtn.addEventListener("click", () => {
+      window.InventoryAuth.addActionLog("Device Master Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Group Page.`);
     });
 
     openDashboardPageBtn.addEventListener("click", () => {
