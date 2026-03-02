@@ -214,7 +214,7 @@
     <div class="page-head">
       <h1>Dashboard Page</h1>
       <div class="inline-actions">
-        <a class="nav-btn" id="toDeviceGroupPageBtn" href="device-group-page.html">Device Group Page</a>
+        <a class="nav-btn" id="toDeviceGroupPageBtn" href="device-group-page.html">Device Selection Page</a>
         <a class="nav-btn" id="toDevicePageBtn" href="device-master-page.html">Device Master Page</a>
         <a class="nav-btn" id="toIssuingPageBtn" href="issuing-page.html">Issuing Page</a>
         <a class="nav-btn" id="toUserPageBtn" href="user-setup-page.html">User Setup Page</a>
@@ -418,7 +418,7 @@
     });
 
     toDeviceGroupPageBtn.addEventListener("click", () => {
-      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Group Page.`);
+      window.InventoryAuth.addActionLog("Dashboard Page", "NAVIGATE", `USER ${activeUser.username}: Opened Device Selection Page.`);
     });
 
     toIssuingPageBtn.addEventListener("click", () => {

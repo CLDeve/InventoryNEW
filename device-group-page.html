@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Device Group Page</title>
+  <title>Device Selection Page</title>
   <style>
     :root {
       --bg: #f4f6fb;
@@ -115,14 +115,21 @@
       border: 0;
       border-radius: 10px;
       padding: 24px 16px;
-      font-size: 18px;
       font-weight: 700;
       cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
       color: #ffffff;
       background: var(--accent);
       transition: transform 0.12s ease, background 0.12s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 112px;
+    }
+
+    .group-icon {
+      width: 46px;
+      height: 46px;
+      fill: currentColor;
     }
 
     .group-btn:hover {
@@ -148,7 +155,7 @@
 <body>
   <main class="container">
     <div class="page-head">
-      <h1>Device Group Page</h1>
+      <h1>Device Selection Page</h1>
     </div>
 
     <div class="session-bar">
@@ -160,8 +167,16 @@
       <p class="subtitle">Select Device Group</p>
       <div id="status" class="status" aria-live="polite"></div>
       <div class="group-buttons">
-        <button class="group-btn" id="mobileDevicesBtn" type="button">Mobile Devices</button>
-        <button class="group-btn alt" id="bwcBtn" type="button">BWC</button>
+        <button class="group-btn" id="mobileDevicesBtn" type="button" aria-label="Mobile Devices" title="Mobile Devices">
+          <svg class="group-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H7zm5 19a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zM7 5h10v12H7V5z"/>
+          </svg>
+        </button>
+        <button class="group-btn alt" id="bwcBtn" type="button" aria-label="BWC" title="BWC">
+          <svg class="group-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5V9l3-1.5v9L17 15v1.5a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5v-9zM11 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+          </svg>
+        </button>
       </div>
     </section>
   </main>
@@ -188,16 +203,16 @@
 
     mobileDevicesBtn.addEventListener("click", () => {
       setStatus("OPENING MOBILE DEVICES PAGES.");
-      window.InventoryAuth.addActionLog("Device Group Page", "NAVIGATE", `USER ${activeUser.username}: Selected MOBILE DEVICES.`);
+      window.InventoryAuth.addActionLog("Device Selection Page", "NAVIGATE", `USER ${activeUser.username}: Selected MOBILE DEVICES.`);
       window.location.href = "dashboard-page.html";
     });
 
     bwcBtn.addEventListener("click", () => {
       setStatus("BWC PAGE IS NOT CONFIGURED YET.", true);
-      window.InventoryAuth.addActionLog("Device Group Page", "SELECT GROUP", `USER ${activeUser.username}: Selected BWC.`);
+      window.InventoryAuth.addActionLog("Device Selection Page", "SELECT GROUP", `USER ${activeUser.username}: Selected BWC.`);
     });
 
-    window.InventoryAuth.addActionLog("Device Group Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Device Group Page.`);
+    window.InventoryAuth.addActionLog("Device Selection Page", "OPEN PAGE", `USER ${activeUser.username}: Opened Device Selection Page.`);
   </script>
 </body>
 </html>
