@@ -305,6 +305,13 @@
             </select>
           </div>
           <div class="field">
+            <label for="retainLine">Retain the line</label>
+            <select id="retainLine" name="retainLine" required>
+              <option value="NO" selected>No</option>
+              <option value="YES">Yes</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="m2mStartDate">M2M Start Date</label>
             <input id="m2mStartDate" name="m2mStartDate" type="date" required>
           </div>
@@ -329,7 +336,7 @@
             <button class="btn-secondary" type="button" id="bulkUploadBtn">Upload CSV</button>
             <button class="btn-secondary" type="button" id="downloadTemplateBtn">Download Template</button>
           </div>
-          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price. Optional: M2M Start Date, M2M End Date (if omitted, contract dates are used).</div>
+          <div class="hint">Required headers: Device ID, IMEI Number, Device Model, Mobile Number, Sim Card Number, Contract Number, Contract Start Date, Contract End Date, M2M, Monthly Cost Price. Optional: Retain the line (default NO), M2M Start Date, M2M End Date (if omitted, contract dates are used).</div>
         </div>
         <div class="hint">Records are saved in the server database.</div>
       </form>
@@ -350,12 +357,13 @@
             <th>M2M Start Date</th>
             <th>M2M End Date</th>
             <th>M2M</th>
+            <th>Retain the line</th>
             <th>Monthly Cost Price</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody id="recordsBody">
-          <tr><td class="empty" colspan="13">No records yet.</td></tr>
+          <tr><td class="empty" colspan="14">No records yet.</td></tr>
         </tbody>
       </table>
     </section>
@@ -395,6 +403,7 @@
       { key: "m2mStartDate", header: "M2M Start Date" },
       { key: "m2mEndDate", header: "M2M End Date" },
       { key: "m2m", header: "M2M" },
+      { key: "retainLine", header: "Retain the line" },
       { key: "monthlyCostPrice", header: "Monthly Cost Price" }
     ];
     let records = [];
@@ -439,7 +448,7 @@
 
     function renderRecords() {
       if (records.length === 0) {
-        recordsBody.innerHTML = '<tr><td class="empty" colspan="13">No records yet.</td></tr>';
+        recordsBody.innerHTML = '<tr><td class="empty" colspan="14">No records yet.</td></tr>';
         return;
       }
 
@@ -456,6 +465,7 @@
           <td>${escapeHtml(record.m2mStartDate || "")}</td>
           <td>${escapeHtml(record.m2mEndDate || "")}</td>
           <td>${escapeHtml(record.m2m || "")}</td>
+          <td>${escapeHtml(record.retainLine || "")}</td>
           <td>${escapeHtml(record.monthlyCostPrice || "")}</td>
           <td><button class="delete-btn" type="button" data-id="${record.id}">Delete</button></td>
         </tr>
@@ -476,6 +486,7 @@
         r.m2mStartDate || "",
         r.m2mEndDate || "",
         r.m2m || "",
+        r.retainLine || "",
         r.monthlyCostPrice || ""
       ]);
       return [header, ...rows]
@@ -501,6 +512,10 @@
 
     function normalizeM2M(value) {
       return normalizeText(value) === "KNOX" ? "KNOX" : "SOTI";
+    }
+
+    function normalizeRetainLine(value) {
+      return normalizeText(value) === "YES" ? "YES" : "NO";
     }
 
     function normalizeMonthlyCostPrice(value) {
@@ -610,6 +625,7 @@
         m2mStartDate: String(formData.get("m2mStartDate") || "").trim(),
         m2mEndDate: String(formData.get("m2mEndDate") || "").trim(),
         m2m: normalizeM2M(formData.get("m2m")),
+        retainLine: normalizeRetainLine(formData.get("retainLine")),
         monthlyCostPrice: normalizeMonthlyCostPrice(formData.get("monthlyCostPrice"))
       };
 
@@ -667,7 +683,7 @@
     downloadTemplateBtn.addEventListener("click", () => {
       const template = [
         DEVICE_COLUMNS.map((column) => column.header),
-        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "01/JAN/2026", "01/JAN/2028", "01/JAN/2026", "01/JAN/2028", "SOTI", "35.00"]
+        ["DEV-001", "123456789012345", "IPHONE 14", "91234567", "SIM123456", "CN-001", "01/JAN/2026", "01/JAN/2028", "01/JAN/2026", "01/JAN/2028", "SOTI", "NO", "35.00"]
       ]
         .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
         .join("\n");
@@ -696,7 +712,7 @@
         headerIndex[column.key] = headers.indexOf(normalizeHeader(column.header));
       });
 
-      const optionalBulkColumns = new Set(["m2mStartDate", "m2mEndDate"]);
+      const optionalBulkColumns = new Set(["retainLine", "m2mStartDate", "m2mEndDate"]);
       const missing = DEVICE_COLUMNS
         .filter((column) => headerIndex[column.key] === -1 && !optionalBulkColumns.has(column.key))
         .map((column) => column.header);
@@ -716,12 +732,17 @@
             record[column.key] = raw;
           } else if (column.key === "m2m") {
             record[column.key] = normalizeM2M(raw);
+          } else if (column.key === "retainLine") {
+            record[column.key] = normalizeRetainLine(raw);
           } else if (column.key === "monthlyCostPrice") {
             record[column.key] = normalizeMonthlyCostPrice(raw);
           } else {
             record[column.key] = normalizeText(raw);
           }
         });
+        if (!record.retainLine) {
+          record.retainLine = "NO";
+        }
         if (!record.m2mStartDate) {
           record.m2mStartDate = record.contractStartDate;
         }
