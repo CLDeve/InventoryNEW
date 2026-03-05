@@ -21,7 +21,7 @@ const pool = new Pool({
 });
 
 const app = express();
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "10mb" }));
 
 function createId() {
   return typeof crypto.randomUUID === "function"
@@ -51,46 +51,55 @@ function normalizeDateValue(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
 
-  // Already ISO format.
-  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    const [_, y, m, d] = isoMatch;
-    const date = new Date(`${y}-${m}-${d}T00:00:00Z`);
-    if (Number.isNaN(date.getTime())) return "";
-    if (date.getUTCFullYear() !== Number(y) || date.getUTCMonth() + 1 !== Number(m) || date.getUTCDate() !== Number(d)) return "";
-    return `${y}-${m}-${d}`;
-  }
+  function toIsoDate(yearInput, monthInput, dayInput) {
+    const year = Number(yearInput);
+    const month = Number(monthInput);
+    const day = Number(dayInput);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return "";
+    if (month < 1 || month > 12 || day < 1 || day > 31) return "";
 
-  // DD/MM/YYYY or D/M/YYYY
-  const dmyNumeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (dmyNumeric) {
-    const day = Number(dmyNumeric[1]);
-    const month = Number(dmyNumeric[2]);
-    const year = Number(dmyNumeric[3]);
-    const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const date = new Date(`${iso}T00:00:00Z`);
     if (Number.isNaN(date.getTime())) return "";
     if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return "";
     return iso;
   }
 
+  // ISO date (also accepts timestamp-like suffixes from exported tools).
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if (isoMatch) {
+    const iso = toIsoDate(isoMatch[1], isoMatch[2], isoMatch[3]);
+    if (iso) return iso;
+  }
+
+  // DD/MM/YYYY or D/M/YYYY
+  // Also accepts MM/DD/YYYY when non-ambiguous.
+  const slashNumeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashNumeric) {
+    const first = slashNumeric[1];
+    const second = slashNumeric[2];
+    const year = slashNumeric[3];
+
+    const dmy = toIsoDate(year, second, first);
+    const mdy = toIsoDate(year, first, second);
+    if (dmy && mdy) return dmy;
+    if (dmy || mdy) return dmy || mdy;
+  }
+
   // DD/MMM/YYYY (e.g., 02/MAR/2026)
   const dmyMonthName = raw.match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/);
   if (dmyMonthName) {
-    const day = Number(dmyMonthName[1]);
+    const day = dmyMonthName[1];
     const monText = dmyMonthName[2].toUpperCase();
-    const year = Number(dmyMonthName[3]);
+    const year = dmyMonthName[3];
     const monthMap = {
       JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
       JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
     };
     const month = monthMap[monText] || 0;
     if (!month) return "";
-    const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const date = new Date(`${iso}T00:00:00Z`);
-    if (Number.isNaN(date.getTime())) return "";
-    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return "";
-    return iso;
+    const iso = toIsoDate(year, month, day);
+    if (iso) return iso;
   }
 
   return "";
@@ -426,7 +435,10 @@ function validateDeviceRecordInput(payload) {
   ];
 
   if (required.some((value) => !value)) {
-    return { ok: false, message: "All device fields are required. Use date format YYYY-MM-DD, DD/MM/YYYY, or DD/MMM/YYYY." };
+    return {
+      ok: false,
+      message: "All device fields are required. Use date format YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY (when unambiguous), or DD/MMM/YYYY."
+    };
   }
 
   if (record.contractStartDate > record.contractEndDate) {
