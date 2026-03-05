@@ -453,13 +453,21 @@ function requireRight(rightKey) {
 }
 
 function validateDeviceRecordInput(payload) {
+  const monthlyCostRaw = String(payload.monthlyCostPrice || "").trim();
+  let monthlyCostPrice = normalizeMonthlyCostPrice(payload.monthlyCostPrice);
+  if (monthlyCostPrice === null && !monthlyCostRaw) {
+    monthlyCostPrice = 0;
+  }
+
   const contractStartDate = normalizeDateValue(payload.contractStartDate);
   const contractEndDate = normalizeDateValue(payload.contractEndDate);
   const rawM2mStartDate = normalizeDateValue(payload.m2mStartDate);
   const rawM2mEndDate = normalizeDateValue(payload.m2mEndDate);
+  const imeiNumber = normalizeUpper(payload.imeiNumber);
+  const deviceId = normalizeUpper(payload.deviceId) || imeiNumber;
   const record = {
-    deviceId: normalizeUpper(payload.deviceId),
-    imeiNumber: normalizeUpper(payload.imeiNumber),
+    deviceId,
+    imeiNumber,
     deviceModel: normalizeUpper(payload.deviceModel),
     mobileNumber: normalizeUpper(payload.mobileNumber),
     simCardNumber: normalizeUpper(payload.simCardNumber),
@@ -471,7 +479,7 @@ function validateDeviceRecordInput(payload) {
     m2mStartDate: rawM2mStartDate || contractStartDate,
     m2mEndDate: rawM2mEndDate || contractEndDate,
     m2m: normalizeM2M(payload.m2m),
-    monthlyCostPrice: normalizeMonthlyCostPrice(payload.monthlyCostPrice)
+    monthlyCostPrice
   };
 
   const required = [
@@ -846,6 +854,14 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
     details: `USER ${req.user.username}: Imported ${importedCount}, skipped ${skippedCount}`,
     actorUsername: req.user.username
   });
+
+  if (importedCount === 0) {
+    const first = errors[0];
+    const message = first
+      ? `Bulk upload failed at row ${first.row}: ${first.reason}`
+      : "Bulk upload failed: no valid rows found.";
+    return res.status(400).json({ message, importedCount, skippedCount, errors });
+  }
 
   return res.json({ importedCount, skippedCount, errors });
 });
