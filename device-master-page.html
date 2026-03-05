@@ -745,7 +745,12 @@
         });
         bulkCsvFile.value = "";
         await refreshRecords();
-        setStatus(`Bulk upload completed. Imported ${result.importedCount} record(s), skipped ${result.skippedCount} row(s).`);
+        const firstError = Array.isArray(result.errors) && result.errors.length > 0 ? result.errors[0] : null;
+        const errorHint = firstError ? ` First skipped row ${firstError.row}: ${firstError.reason}` : "";
+        setStatus(
+          `Bulk upload completed. Imported ${result.importedCount} record(s), skipped ${result.skippedCount} row(s).${errorHint}`,
+          result.importedCount === 0
+        );
       } catch (err) {
         setStatus(err.message || "Bulk upload failed.", true);
       }

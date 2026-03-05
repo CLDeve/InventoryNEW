@@ -42,7 +42,10 @@ function normalizeM2M(value) {
 }
 
 function normalizeMonthlyCostPrice(value) {
-  const parsed = Number(String(value || "").trim());
+  const normalized = String(value || "")
+    .trim()
+    .replace(/[$,\s]/g, "");
+  const parsed = Number(normalized);
   if (!Number.isFinite(parsed) || parsed < 0) return null;
   return Number(parsed.toFixed(2));
 }
@@ -50,6 +53,23 @@ function normalizeMonthlyCostPrice(value) {
 function normalizeDateValue(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
+
+  function normalizeYear(yearInput) {
+    const yearText = String(yearInput || "").trim();
+    if (!/^\d{2,4}$/.test(yearText)) return null;
+    const yearNumber = Number(yearText);
+    if (yearText.length === 2) return 2000 + yearNumber;
+    return yearNumber;
+  }
+
+  function monthFromText(text) {
+    const monthMap = {
+      JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
+      JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
+    };
+    const key = String(text || "").trim().slice(0, 3).toUpperCase();
+    return monthMap[key] || 0;
+  }
 
   function toIsoDate(yearInput, monthInput, dayInput) {
     const year = Number(yearInput);
@@ -65,8 +85,13 @@ function normalizeDateValue(value) {
     return iso;
   }
 
+  const core = raw
+    .replace(/^\uFEFF/, "")
+    .replace(/\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[APMapm]{2})?$/, "")
+    .trim();
+
   // ISO date (also accepts timestamp-like suffixes from exported tools).
-  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  const isoMatch = core.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/);
   if (isoMatch) {
     const iso = toIsoDate(isoMatch[1], isoMatch[2], isoMatch[3]);
     if (iso) return iso;
@@ -74,32 +99,61 @@ function normalizeDateValue(value) {
 
   // DD/MM/YYYY or D/M/YYYY
   // Also accepts MM/DD/YYYY when non-ambiguous.
-  const slashNumeric = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const slashNumeric = core.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
   if (slashNumeric) {
-    const first = slashNumeric[1];
-    const second = slashNumeric[2];
-    const year = slashNumeric[3];
+    const first = Number(slashNumeric[1]);
+    const second = Number(slashNumeric[2]);
+    const year = normalizeYear(slashNumeric[3]);
+    if (!year) return "";
 
-    const dmy = toIsoDate(year, second, first);
-    const mdy = toIsoDate(year, first, second);
+    const dmy = toIsoDate(year, second, first); // day/month/year
+    const mdy = toIsoDate(year, first, second); // month/day/year
+    if (first > 12 && second <= 12) return dmy;
+    if (second > 12 && first <= 12) return mdy;
     if (dmy && mdy) return dmy;
     if (dmy || mdy) return dmy || mdy;
   }
 
   // DD/MMM/YYYY (e.g., 02/MAR/2026)
-  const dmyMonthName = raw.match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/);
+  const dmyMonthName = core.match(/^(\d{1,2})[\/\-\s]([A-Za-z]{3,9})[\/\-\s](\d{2,4})$/);
   if (dmyMonthName) {
     const day = dmyMonthName[1];
-    const monText = dmyMonthName[2].toUpperCase();
-    const year = dmyMonthName[3];
-    const monthMap = {
-      JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
-      JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
-    };
-    const month = monthMap[monText] || 0;
-    if (!month) return "";
+    const month = monthFromText(dmyMonthName[2]);
+    const year = normalizeYear(dmyMonthName[3]);
+    if (!month || !year) return "";
     const iso = toIsoDate(year, month, day);
     if (iso) return iso;
+  }
+
+  // MMM/DD/YYYY (e.g., MAR/02/2026) and MMM-DD-YYYY.
+  const mdyMonthName = core.match(/^([A-Za-z]{3,9})[\/\-\s](\d{1,2})[\/\-\s](\d{2,4})$/);
+  if (mdyMonthName) {
+    const month = monthFromText(mdyMonthName[1]);
+    const day = mdyMonthName[2];
+    const year = normalizeYear(mdyMonthName[3]);
+    if (!month || !year) return "";
+    const iso = toIsoDate(year, month, day);
+    if (iso) return iso;
+  }
+
+  // Excel serial date numbers (days since 1899-12-30).
+  if (/^\d{5,6}$/.test(core)) {
+    const serial = Number(core);
+    if (Number.isFinite(serial) && serial > 0) {
+      const baseMs = Date.UTC(1899, 11, 30);
+      const date = new Date(baseMs + (serial * 24 * 60 * 60 * 1000));
+      const iso = toIsoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+      if (iso) return iso;
+    }
+  }
+
+  // Fallback for textual month variants such as "5-Mar-26".
+  if (/[A-Za-z]/.test(core)) {
+    const parsed = new Date(core);
+    if (!Number.isNaN(parsed.getTime())) {
+      const iso = toIsoDate(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate());
+      if (iso) return iso;
+    }
   }
 
   return "";
@@ -745,11 +799,19 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
 
   let importedCount = 0;
   let skippedCount = 0;
+  const errors = [];
 
-  for (const item of inputRecords) {
+  for (let index = 0; index < inputRecords.length; index += 1) {
+    const item = inputRecords[index];
     const validated = validateDeviceRecordInput(item || {});
     if (!validated.ok) {
       skippedCount += 1;
+      if (errors.length < 10) {
+        errors.push({
+          row: index + 2, // +1 header row, +1 zero-based index
+          reason: validated.message
+        });
+      }
       continue;
     }
 
@@ -785,7 +847,7 @@ app.post("/api/device-records/bulk", authMiddleware, requireRight("deviceMaster"
     actorUsername: req.user.username
   });
 
-  return res.json({ importedCount, skippedCount });
+  return res.json({ importedCount, skippedCount, errors });
 });
 
 app.post("/api/device-records/issue", authMiddleware, requireRight("issuingPage"), async (req, res) => {
